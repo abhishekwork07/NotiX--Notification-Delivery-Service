@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: api-service
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/notix
+    username: notix_user
+    password: notix_pass
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, metrics
