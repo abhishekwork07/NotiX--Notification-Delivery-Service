@@ -20,10 +20,19 @@ spring:
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 management:
   endpoints:
     web:
       exposure:
         include: health, metrics
+
+kafka:
+  bootstrap-servers: localhost:9092
+  consumer:
+    group-id: dispatcher-group
+    topics: notifications
+  producer:
+    email-topic: notifications.email
+    sms-topic: notifications.sms
