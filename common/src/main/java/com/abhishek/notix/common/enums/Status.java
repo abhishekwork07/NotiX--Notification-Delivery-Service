@@ -1,4 +1,4 @@
-package com.abhishek.notix.common_lib.enums;
+package com.abhishek.notix.common.enums;
 
 public enum Status {
     PENDING,

@@ -1,6 +1,6 @@
-package com.abhishek.notix.common_lib.dto;
+package com.abhishek.notix.common.dto;
 
-import com.abhishek.notix.common_lib.enums.Status;
+import com.abhishek.notix.common.enums.Status;
 
 import java.util.UUID;
 

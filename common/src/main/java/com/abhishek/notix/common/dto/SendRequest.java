@@ -1,32 +1,31 @@
-package com.abhishek.notix.common_lib.dto;
+package com.abhishek.notix.common.dto;
 
-import com.abhishek.notix.common_lib.enums.Channel;
+import com.abhishek.notix.common.enums.Channel;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.Map;
-import java.util.UUID;
 
-public class NotificationEvent {
+public class SendRequest {
 
-    private UUID id;
+    @NotBlank
+    @Email
     private String to;
+
+    @NotNull
     private Channel channel;
+
+    @NotBlank
     private String template;
+
     private Map<String, Object> params;
 
-    public NotificationEvent() {}
-
-    public NotificationEvent(UUID id, String to, Channel channel, String template, Map<String, Object> params) {
-        this.id = id;
-        this.to = to;
-        this.channel = channel;
-        this.template = template;
-        this.params = params;
+    public SendRequest() {
+        // Default constructor
     }
 
     // Getters and Setters
-
-    public UUID getId() { return id; }
-    public void setId(UUID id) { this.id = id; }
 
     public String getTo() { return to; }
     public void setTo(String to) { this.to = to; }
