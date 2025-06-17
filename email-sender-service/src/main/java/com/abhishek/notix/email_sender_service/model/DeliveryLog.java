@@ -1,6 +1,6 @@
 package com.abhishek.notix.email_sender_service.model;
 
-import com.abhishek.notix.email_sender_service.enums.Status;
+import com.abhishek.notix.common.enums.Status;
 import jakarta.persistence.*;
 import java.time.Instant;
 import java.util.UUID;

@@ -1,8 +1,8 @@
 package com.abhishek.notix.email_sender_service.service;
 
 import com.abhishek.notix.email_sender_service.config.MailConfig;
-import com.abhishek.notix.email_sender_service.dto.NotificationEvent;
-import com.abhishek.notix.email_sender_service.enums.Status;
+import com.abhishek.notix.common.dto.NotificationEvent;
+import com.abhishek.notix.common.enums.Status;
 import com.abhishek.notix.email_sender_service.model.DeliveryLog;
 import com.abhishek.notix.email_sender_service.repo.DeliveryLogRepository;
 import org.springframework.beans.factory.annotation.Autowired;

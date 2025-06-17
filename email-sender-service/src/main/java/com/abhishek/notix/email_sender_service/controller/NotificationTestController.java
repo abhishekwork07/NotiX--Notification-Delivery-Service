@@ -1,7 +1,7 @@
 package com.abhishek.notix.email_sender_service.controller;
 
-import com.abhishek.notix.email_sender_service.dto.NotificationEvent;
-import com.abhishek.notix.email_sender_service.enums.Channel;
+import com.abhishek.notix.common.dto.NotificationEvent;
+import com.abhishek.notix.common.enums.Channel;
 import com.abhishek.notix.email_sender_service.service.EmailSenderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

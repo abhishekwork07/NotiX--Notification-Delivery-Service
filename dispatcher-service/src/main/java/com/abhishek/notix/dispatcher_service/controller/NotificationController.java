@@ -1,7 +1,7 @@
 package com.abhishek.notix.dispatcher_service.controller;
 
-import com.abhishek.notix.dispatcher_service.dto.NotificationEvent;
-import com.abhishek.notix.dispatcher_service.enums.Channel;
+import com.abhishek.notix.common.dto.NotificationEvent;
+import com.abhishek.notix.common.enums.Channel;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;

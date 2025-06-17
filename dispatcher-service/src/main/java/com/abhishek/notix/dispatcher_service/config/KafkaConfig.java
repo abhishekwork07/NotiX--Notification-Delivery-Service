@@ -1,6 +1,6 @@
 package com.abhishek.notix.dispatcher_service.config;
 
-import com.abhishek.notix.dispatcher_service.dto.NotificationEvent;
+import com.abhishek.notix.common.dto.NotificationEvent;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.context.annotation.Bean;
