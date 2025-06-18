@@ -24,3 +24,13 @@ management:
     web:
       exposure:
         include: health, metrics
+
+kafka:
+  consumer:
+    sms-topic: notifications.sms
+
+twilio:
+  account-sid: YOUR_ACCOUNT_SID
+  auth-token: YOUR_AUTH_TOKEN
+  from-number: YOUR_TWILIO_PHONE
+

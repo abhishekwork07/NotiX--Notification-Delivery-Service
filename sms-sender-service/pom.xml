@@ -71,6 +71,11 @@
 			<artifactId>common</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
+		<dependency>
+			<groupId>com.twilio.sdk</groupId>
+			<artifactId>twilio</artifactId>
+			<version>9.13.0</version> <!-- Check mvnrepository for latest -->
+		</dependency>
 	</dependencies>
 
 	<build>

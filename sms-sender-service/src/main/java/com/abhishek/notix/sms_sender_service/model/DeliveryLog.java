@@ -29,6 +29,60 @@ public class DeliveryLog {
     @Column(nullable = false)
     private Instant timestamp = Instant.now();
 
-    // getters/setters
+    public DeliveryLog(UUID notificationId, int attemptNo, Status status, String errorMessage, Instant timestamp) {
+        this.notificationId = notificationId;
+        this.attemptNo = attemptNo;
+        this.status = status;
+        this.errorMessage = errorMessage;
+        this.timestamp = timestamp;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public UUID getNotificationId() {
+        return notificationId;
+    }
+
+    public void setNotificationId(UUID notificationId) {
+        this.notificationId = notificationId;
+    }
+
+    public int getAttemptNo() {
+        return attemptNo;
+    }
+
+    public void setAttemptNo(int attemptNo) {
+        this.attemptNo = attemptNo;
+    }
+
+    public Status getStatus() {
+        return status;
+    }
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
+
+    public Instant getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(Instant timestamp) {
+        this.timestamp = timestamp;
+    }
 }
 
