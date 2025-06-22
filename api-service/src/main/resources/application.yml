@@ -32,3 +32,6 @@ management:
     health:
       show-details: always
 
+kafka:
+  producer:
+    topic: notifications
