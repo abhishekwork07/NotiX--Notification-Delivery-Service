@@ -1,0 +1,118 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "NotiX Microservices Dashboard",
+    "tags": ["notix", "spring-boot", "prometheus"],
+    "timezone": "browser",
+    "schemaVersion": 36,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "type": "stat",
+        "title": "API Service Uptime",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "process_uptime_seconds{job=\"api-service\"}",
+            "legendFormat": "api-service",
+            "refId": "A"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 0, "w": 6, "h": 3 }
+      },
+      {
+        "type": "stat",
+        "title": "Dispatcher Uptime",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "process_uptime_seconds{job=\"dispatcher-service\"}",
+            "legendFormat": "dispatcher",
+            "refId": "A"
+          }
+        ],
+        "gridPos": { "x": 6, "y": 0, "w": 6, "h": 3 }
+      },
+      {
+        "type": "stat",
+        "title": "Email Sender Uptime",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "process_uptime_seconds{job=\"email-sender-service\"}",
+            "legendFormat": "email",
+            "refId": "A"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 3, "w": 6, "h": 3 }
+      },
+      {
+        "type": "stat",
+        "title": "SMS Sender Uptime",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "process_uptime_seconds{job=\"sms-sender-service\"}",
+            "legendFormat": "sms",
+            "refId": "A"
+          }
+        ],
+        "gridPos": { "x": 6, "y": 3, "w": 6, "h": 3 }
+      },
+      {
+        "type": "stat",
+        "title": "Retry Scheduler Uptime",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "process_uptime_seconds{job=\"retry-scheduler-service\"}",
+            "legendFormat": "retry",
+            "refId": "A"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 6, "w": 12, "h": 3 }
+      },
+      {
+        "type": "graph",
+        "title": "HTTP Requests/sec (API Service)",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_count{job=\"api-service\"}[1m])",
+            "legendFormat": "{{uri}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 9, "w": 12, "h": 6 }
+      },
+      {
+        "type": "graph",
+        "title": "JVM Heap Used (All Services)",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{area=\"heap\"}",
+            "legendFormat": "{{job}}",
+            "refId": "A"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 15, "w": 12, "h": 6 }
+      },
+      {
+        "type": "graph",
+        "title": "HTTP Request Latency (API)",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(http_server_requests_seconds_sum{job=\"api-service\"}[1m]) / rate(http_server_requests_seconds_count{job=\"api-service\"}[1m])",
+            "legendFormat": "Avg Latency (API)",
+            "refId": "A"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 21, "w": 12, "h": 6 }
+      }
+    ]
+  },
+  "overwrite": true
+}

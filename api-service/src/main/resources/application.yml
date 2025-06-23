@@ -17,20 +17,24 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
-#management:
-#  endpoints:
-#    web:
-#      exposure:
-#        include: health, metrics
+info:
+  app:
+    name: api-service
+    description: Handles notification submission & publishing
+    version: 1.0.0
 
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health, info, metrics, prometheus
   endpoint:
     health:
       show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
 
 kafka:
   producer:
