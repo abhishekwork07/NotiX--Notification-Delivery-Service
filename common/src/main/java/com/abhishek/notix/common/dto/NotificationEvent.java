@@ -1,16 +1,29 @@
 package com.abhishek.notix.common.dto;
 
 import com.abhishek.notix.common.enums.Channel;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 import java.util.Map;
 import java.util.UUID;
 
 public class NotificationEvent {
 
+    @NotNull(message = "ID must not be null")
     private UUID id;
+
+    @NotBlank(message = "Recipient (to) is required")
+    @Email(message = "Invalid email format")
     private String to;
+
+    @NotNull(message = "Channel is required")
     private Channel channel;
+
+    @NotBlank(message = "Template is required")
     private String template;
+
     private Map<String, Object> params;
 
     public NotificationEvent() {}
