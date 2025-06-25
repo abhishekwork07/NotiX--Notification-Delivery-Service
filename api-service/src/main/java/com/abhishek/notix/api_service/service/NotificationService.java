@@ -1,8 +1,10 @@
 package com.abhishek.notix.api_service.service;
 
+import com.abhishek.notix.api_service.exception.NotFoundException;
 import com.abhishek.notix.api_service.model.Notification;
 import com.abhishek.notix.api_service.repo.NotificationRepository;
 import com.abhishek.notix.common.dto.NotificationEvent;
+import com.abhishek.notix.common.dto.StatusResponse;
 import com.abhishek.notix.common.enums.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,4 +43,13 @@ public class NotificationService {
 
         return notificationId;
     }
+
+    public StatusResponse getStatus(UUID id) {
+        Notification notification = notificationRepository
+                .findById(id)
+                .orElseThrow(() -> new NotFoundException("Notification not found: " + id));
+        return new StatusResponse(id, notification.getStatus());
+    }
+
+
 }
