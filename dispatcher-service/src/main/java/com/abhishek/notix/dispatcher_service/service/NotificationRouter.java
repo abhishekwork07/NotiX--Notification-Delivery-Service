@@ -17,9 +17,25 @@ public class NotificationRouter {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    @KafkaListener(topics = "${kafka.consumer.topics}", groupId = "${spring.application.name}-group")
-    public void route(NotificationEvent event) {
-        String targetTopic = Channel.EMAIL.equals(event.getChannel()) ? emailTopic : smsTopic;
-        kafkaTemplate.send(targetTopic, String.valueOf(event.getId()), event);
+    @KafkaListener(topics = "notifications", groupId = "dispatcher-group", containerFactory = "kafkaListenerContainerFactory")
+    public void handleNotification(NotificationEvent event) {
+        System.out.println("📩 Received event: " + event);
+
+        if (event.getChannel() == null) {
+            System.err.println("⚠️ Channel is missing in event: " + event);
+            return;
+        }
+
+        switch (event.getChannel()) {
+            case EMAIL -> {
+                System.out.println("📬 Routing to Email Topic");
+                kafkaTemplate.send(emailTopic, event);
+            }
+            case SMS -> {
+                System.out.println("📲 Routing to SMS Topic");
+                kafkaTemplate.send(smsTopic, event);
+            }
+            default -> System.err.println("❌ Unknown channel: " + event.getChannel());
+        }
     }
 }

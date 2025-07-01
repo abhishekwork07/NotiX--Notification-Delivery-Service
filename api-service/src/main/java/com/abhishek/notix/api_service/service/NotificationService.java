@@ -1,17 +1,22 @@
 package com.abhishek.notix.api_service.service;
 
+import com.abhishek.notix.api_service.dto.StatusResponseDTO;
 import com.abhishek.notix.api_service.exception.NotFoundException;
+import com.abhishek.notix.api_service.model.DeliveryLog;
 import com.abhishek.notix.api_service.model.Notification;
+import com.abhishek.notix.api_service.repo.DeliveryLogRepository;
 import com.abhishek.notix.api_service.repo.NotificationRepository;
 import com.abhishek.notix.common.dto.NotificationEvent;
-import com.abhishek.notix.common.dto.StatusResponse;
 import com.abhishek.notix.common.enums.Status;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class NotificationService {
@@ -21,6 +26,9 @@ public class NotificationService {
 
     @Autowired
     private NotificationRepository notificationRepository;
+
+    @Autowired
+    private DeliveryLogRepository deliveryLogRepository;
 
     @Value("${kafka.producer.topic}")
     private String topic;
@@ -44,12 +52,14 @@ public class NotificationService {
         return notificationId;
     }
 
-    public StatusResponse getStatus(UUID id) {
-        Notification notification = notificationRepository
-                .findById(id)
-                .orElseThrow(() -> new NotFoundException("Notification not found: " + id));
-        return new StatusResponse(id, notification.getStatus());
-    }
+    public Optional<StatusResponseDTO> getStatus(UUID id) {
+        Optional<Notification> notificationOpt = notificationRepository.findById(id);
+        if (notificationOpt.isEmpty()) return Optional.empty();
 
+        Notification notification = notificationOpt.get();
+        List<DeliveryLog> attempts = deliveryLogRepository.findByNotificationId(id);
+
+        return Optional.of(new StatusResponseDTO(notification, attempts));
+    }
 
 }

@@ -80,7 +80,12 @@
 			<artifactId>twilio</artifactId>
 			<version>9.13.0</version> <!-- Check mvnrepository for latest -->
 		</dependency>
-	</dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
 	<build>
 		<plugins>

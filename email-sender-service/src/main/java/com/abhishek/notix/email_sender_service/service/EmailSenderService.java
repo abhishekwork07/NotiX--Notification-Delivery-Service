@@ -18,20 +18,11 @@ public class EmailSenderService {
     @Autowired
     private DeliveryLogRepository logRepo;
 
-//    @Autowired
-//    private final JavaMailSender mailSender;
+    @Autowired
+    private JavaMailSender mailSender;
 
     @Autowired
     private MailConfig mailConfig;
-
-    private JavaMailSender getJavaMailSender() {
-        return mailConfig.javaMailSender();
-    }
-
-//    public EmailSenderService(DeliveryLogRepository logRepo, JavaMailSender mailSender) {
-//        this.logRepo = logRepo;
-//        this.mailSender = mailSender;
-//    }
 
     @KafkaListener(topics = "${kafka.consumer.email-topic}", groupId = "${spring.application.name}")
     public void sendEmail(NotificationEvent event) {

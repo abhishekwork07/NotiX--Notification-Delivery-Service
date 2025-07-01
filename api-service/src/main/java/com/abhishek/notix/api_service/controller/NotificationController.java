@@ -1,5 +1,7 @@
 package com.abhishek.notix.api_service.controller;
 
+import com.abhishek.notix.api_service.dto.StatusResponseDTO;
+import com.abhishek.notix.api_service.exception.NotFoundException;
 import com.abhishek.notix.api_service.service.NotificationService;
 import com.abhishek.notix.common.dto.NotificationEvent;
 import com.abhishek.notix.common.dto.StatusResponse;
@@ -30,16 +32,19 @@ public class NotificationController {
         return ResponseEntity.ok("Notification queued with ID: " + id);
     }
 
+    @GetMapping("/status/{id}")
     @Operation(
             summary = "Get notification status",
-            description = "Returns the current delivery status of the notification by ID"
+            description = "Returns the delivery status and attempts of the notification by ID"
     )
-    @ApiResponse(responseCode = "200", description = "Returns status like PENDING, SENT, or FAILED")
-    @GetMapping("/status/{id}")
-    public ResponseEntity<StatusResponse> getStatus(@PathVariable UUID id) {
-        StatusResponse resp = notificationService.getStatus(id);
-        return ResponseEntity.ok(resp);
+    @ApiResponse(responseCode = "200", description = "Returns status and attempts")
+    @ApiResponse(responseCode = "404", description = "Notification not found")
+    public ResponseEntity<StatusResponseDTO> getStatus(@PathVariable UUID id) {
+        return notificationService.getStatus(id)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new NotFoundException("Notification ID not found: " + id));
     }
+
 
 }
 
