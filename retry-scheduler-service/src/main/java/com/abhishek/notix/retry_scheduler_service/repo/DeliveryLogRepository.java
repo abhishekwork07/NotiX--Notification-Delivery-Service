@@ -14,5 +14,7 @@ public interface DeliveryLogRepository extends JpaRepository<DeliveryLog, Long> 
 
     @Query("SELECT d FROM DeliveryLog d WHERE d.status = 'FAILED' AND d.attemptNo < :maxRetries")
     List<DeliveryLog> findRetryableMessages(@Param("maxRetries") int maxRetries);
+
+    List<DeliveryLog> findByStatus(Status status);
 }
 

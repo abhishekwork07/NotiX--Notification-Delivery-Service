@@ -15,11 +15,10 @@ public class DeadLetter {
     @Column(name = "recipient", nullable = false)
     private String recipient;
 
-    @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private Channel channel;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String template;
 
     @Column(nullable = false)
