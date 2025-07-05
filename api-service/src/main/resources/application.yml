@@ -45,3 +45,7 @@ springdoc:
     enabled: true
   swagger-ui:
     path: /swagger-ui.html
+
+notix:
+  security:
+    api-key: notix-secret-key

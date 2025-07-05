@@ -3,10 +3,14 @@ package com.abhishek.notix.api_service.controller;
 import com.abhishek.notix.api_service.service.NotificationService;
 import com.abhishek.notix.common.dto.NotificationEvent;
 import com.abhishek.notix.common.enums.Channel;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 
@@ -14,11 +18,15 @@ import java.util.UUID;
 @RequestMapping("/test/api")
 public class NotificationTestController {
 
-    @Autowired
     private NotificationService notificationService;
+
+    // Simple in-memory bucket (shared across all users for demo)
+    private final Bucket bucket;
 
     public NotificationTestController(NotificationService notificationService) {
         this.notificationService = notificationService;
+        Bandwidth limit = Bandwidth.classic(5, Refill.greedy(5, Duration.ofSeconds(10)));
+        this.bucket = Bucket.builder().addLimit(limit).build();
     }
 
     @PostMapping("/send")
@@ -41,4 +49,20 @@ public class NotificationTestController {
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
+
+    @GetMapping("/rate-limiter")
+    public ResponseEntity<String> testRateLimiter(
+            @RequestHeader(value = "X-API-KEY", required = true) String apiKey) {
+        final String VALID_API_KEY = "notix-secure-key";
+
+        if (!VALID_API_KEY.equals(apiKey)) {
+            return ResponseEntity.status(401).body("  ❌ Unauthorized: Invalid API Key");
+        }
+        if (bucket.tryConsume(1)) {
+            return ResponseEntity.ok("  ✅ Request successful!");
+        } else {
+            return ResponseEntity.status(429).body("  ❌ Too Many Requests. Try again later.");
+        }
+    }
+
 }
