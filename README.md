@@ -8,7 +8,7 @@ NotiX is a lightweight, distributed notification delivery system designed to han
 
 ## 🔧 Tech Stack
 
-- **Java 21 + Spring Boot 3.5.0**
+- **Java 24 + Spring Boot 3.5.0**
 - **Apache Kafka**
 - **PostgreSQL**
 - **Prometheus + Grafana**
