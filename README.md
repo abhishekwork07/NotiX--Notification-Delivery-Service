@@ -1,4 +1,4 @@
-# 🚀 NotiX - Notification Delivery System (POC v1.0)
+# 🔔 NotiX - Notification Delivery System (POC v1.0)
 
 NotiX is a lightweight, distributed notification delivery system designed to handle **Email** and **SMS** communication at scale using **Kafka**-based asynchronous messaging.
 
