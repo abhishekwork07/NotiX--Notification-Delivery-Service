@@ -1,7 +1,14 @@
 package com.abhishek.notix.sms_sender_service.model;
 
 import com.abhishek.notix.common.enums.Status;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -9,12 +16,13 @@ import java.util.UUID;
 @Entity
 @Table(name = "delivery_logs")
 public class DeliveryLog {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "notification_id", nullable = false)
-    private UUID notificationId;   // just the ID
+    private UUID notificationId;
 
     @Column(name = "attempt_no", nullable = false)
     private int attemptNo;
@@ -33,15 +41,6 @@ public class DeliveryLog {
     }
 
     public DeliveryLog(UUID notificationId, int attemptNo, Status status, String errorMessage, Instant timestamp) {
-        this.notificationId = notificationId;
-        this.attemptNo = attemptNo;
-        this.status = status;
-        this.errorMessage = errorMessage;
-        this.timestamp = timestamp;
-    }
-
-    public DeliveryLog(Long id, UUID notificationId, int attemptNo, Status status, String errorMessage, Instant timestamp) {
-        this.id = id;
         this.notificationId = notificationId;
         this.attemptNo = attemptNo;
         this.status = status;

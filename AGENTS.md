@@ -62,7 +62,7 @@ Prefer checked-in code over prose when they conflict.
 
 - `common`
   - Shared DTOs and enums used across services
-  - Must be built or installed before dependent modules if working from a clean machine
+  - The repo now has a root reactor `pom.xml`, so the full project can be built together from the repo root
 
 ## Main flow
 
@@ -80,7 +80,8 @@ Prefer checked-in code over prose when they conflict.
   - Fields: `id`, `to`, `channel`, `template`, `params`
 
 - `common/src/main/java/com/abhishek/notix/common/dto/SendRequest.java`
-  - Exists but is not currently the controller input type in `api-service`
+  - Public request DTO used by `api-service`
+  - Keeps transport input separate from the internal Kafka event contract
 
 - `common/src/main/java/com/abhishek/notix/common/enums/Channel.java`
   - `EMAIL`, `SMS`
@@ -131,17 +132,18 @@ Some of those themes are not yet visible in the current codebase and should be t
 
 ## Build and run
 
-There is no root aggregator `pom.xml`, so treat this as several Maven projects plus a shared library.
+There is now a root reactor `pom.xml`, so the repo can be built as one Maven graph.
 
 Recommended local sequence:
 
 1. Start infra from `infrastructure/docker/docker-compose.yml`
-2. Install `common`
+2. Build from the root reactor or install `common` if working on an individual service in isolation
 3. Run each service independently
 
 Useful commands:
 
 ```bash
+./api-service/mvnw -f pom.xml package -DskipTests
 docker compose -f infrastructure/docker/docker-compose.yml up -d
 ./common/mvnw -f common/pom.xml install
 ./api-service/mvnw -f api-service/pom.xml spring-boot:run
@@ -157,8 +159,8 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 - Runtime config is split between `application.properties` and `application.yml`.
   - Ports are defined in `application.properties`
   - Most Kafka, datasource, and actuator config is in `application.yml`
-- `NotificationController` currently accepts `NotificationEvent`, not `SendRequest`.
-- `SendRequest.to` is annotated with `@Email`, but `NotificationEvent.to` has email validation commented out, likely because the same event type is used for both email and SMS.
+- `SendRequest.to` is intentionally channel-neutral so the same request DTO can support both email and SMS.
+- Keep DTOs and enums in `common`, but keep JPA entities local to each service unless you explicitly want schema coupling.
 - Kafka producer and consumer beans are defined explicitly in Java config; when changing event shape or serialization, update every affected service, not just YAML.
 - `email-sender-service` contains both a listener component and a `@KafkaListener` on the service method; be careful not to introduce duplicate-consumption behavior when refactoring.
 - The owner mentioned tenant foundations, circuit breakers, and Swagger for all services, but a quick scan currently shows:
