@@ -2,13 +2,20 @@ package com.abhishek.notix.retry_scheduler_service.model;
 
 import com.abhishek.notix.common.enums.Channel;
 import com.abhishek.notix.common.enums.Status;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "dead_letters")
 public class DeadLetter {
+
     @Id
     private UUID id;
 
@@ -18,7 +25,6 @@ public class DeadLetter {
     @Enumerated(EnumType.STRING)
     private Channel channel;
 
-    @Column(nullable = true)
     private String template;
 
     @Column(nullable = false)
@@ -31,6 +37,9 @@ public class DeadLetter {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
+    public DeadLetter() {
+    }
+
     public DeadLetter(String recipient, Channel channel, String template, Status status, String errorMessage, Instant createdAt) {
         this.recipient = recipient;
         this.channel = channel;
@@ -38,10 +47,6 @@ public class DeadLetter {
         this.status = status;
         this.errorMessage = errorMessage;
         this.createdAt = createdAt;
-    }
-
-    public DeadLetter() {
-
     }
 
     public UUID getId() {
@@ -100,4 +105,3 @@ public class DeadLetter {
         this.createdAt = createdAt;
     }
 }
-

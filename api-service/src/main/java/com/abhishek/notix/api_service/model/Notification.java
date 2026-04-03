@@ -2,15 +2,22 @@ package com.abhishek.notix.api_service.model;
 
 import com.abhishek.notix.common.enums.Channel;
 import com.abhishek.notix.common.enums.Status;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "notifications")
 public class Notification {
+
     @Id
     private UUID id;
 
@@ -34,6 +41,9 @@ public class Notification {
     @UpdateTimestamp
     private Instant updatedAt;
 
+    public Notification() {
+    }
+
     public Notification(String recipient, Channel channel, String template, Status status, Instant createdAt, Instant updatedAt) {
         this.recipient = recipient;
         this.channel = channel;
@@ -41,10 +51,6 @@ public class Notification {
         this.status = status;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
-    }
-
-    public Notification() {
-
     }
 
     public UUID getId() {
@@ -103,4 +109,3 @@ public class Notification {
         this.updatedAt = updatedAt;
     }
 }
-
