@@ -3,8 +3,7 @@ package com.abhishek.notix.api_service.controller;
 import com.abhishek.notix.api_service.dto.StatusResponseDTO;
 import com.abhishek.notix.api_service.exception.NotFoundException;
 import com.abhishek.notix.api_service.service.NotificationService;
-import com.abhishek.notix.common.dto.NotificationEvent;
-import com.abhishek.notix.common.dto.StatusResponse;
+import com.abhishek.notix.common.dto.SendRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
@@ -27,8 +26,8 @@ public class NotificationController {
     )
     @ApiResponse(responseCode = "200", description = "Notification successfully queued")
     @PostMapping("/send")
-    public ResponseEntity<String> sendNotification(@Valid @RequestBody NotificationEvent event) {
-        UUID id = notificationService.processNotification(event);
+    public ResponseEntity<String> sendNotification(@Valid @RequestBody SendRequest request) {
+        UUID id = notificationService.processNotification(request);
         return ResponseEntity.ok("Notification queued with ID: " + id);
     }
 
@@ -47,4 +46,3 @@ public class NotificationController {
 
 
 }
-

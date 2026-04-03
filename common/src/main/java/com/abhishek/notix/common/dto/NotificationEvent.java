@@ -1,10 +1,9 @@
 package com.abhishek.notix.common.dto;
 
 import com.abhishek.notix.common.enums.Channel;
-import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.Builder;
 
 import java.util.Map;
@@ -28,14 +27,23 @@ public class NotificationEvent {
 
     private Map<String, Object> params;
 
+    @Builder.Default
+    @Min(value = 1, message = "Attempt number must be at least 1")
+    private int attemptNo = 1;
+
     public NotificationEvent() {}
 
     public NotificationEvent(UUID id, String to, Channel channel, String template, Map<String, Object> params) {
+        this(id, to, channel, template, params, 1);
+    }
+
+    public NotificationEvent(UUID id, String to, Channel channel, String template, Map<String, Object> params, int attemptNo) {
         this.id = id;
         this.to = to;
         this.channel = channel;
         this.template = template;
         this.params = params;
+        this.attemptNo = attemptNo;
     }
 
     // Getters and Setters
@@ -54,4 +62,7 @@ public class NotificationEvent {
 
     public Map<String, Object> getParams() { return params; }
     public void setParams(Map<String, Object> params) { this.params = params; }
+
+    public int getAttemptNo() { return attemptNo; }
+    public void setAttemptNo(int attemptNo) { this.attemptNo = attemptNo; }
 }
