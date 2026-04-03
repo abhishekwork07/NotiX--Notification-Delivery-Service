@@ -21,8 +21,8 @@ Prefer checked-in code over prose when they conflict.
 
 ## Stack
 
-- Java 24 in module `pom.xml` files
-- Spring Boot 3.5.0
+- Java 25 in module `pom.xml` files
+- Spring Boot 3.5.13
 - Apache Kafka
 - PostgreSQL
 - Prometheus + Grafana
@@ -155,7 +155,7 @@ docker compose -f infrastructure/docker/docker-compose.yml up -d
 
 ## High-signal gotchas
 
-- The README says JDK 21 in local setup, but all module `pom.xml` files set `java.version` to `24`.
+- The project now targets JDK 25; local builds will fail until the active `JAVA_HOME` / `java -version` is also 25.
 - Runtime config is split between `application.properties` and `application.yml`.
   - Ports are defined in `application.properties`
   - Most Kafka, datasource, and actuator config is in `application.yml`

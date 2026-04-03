@@ -97,8 +97,8 @@ flowchart LR
 
 ## Technology Stack
 
-- Java 24
-- Spring Boot 3.5.0
+- Java 25
+- Spring Boot 3.5.13
 - Apache Kafka
 - PostgreSQL
 - Spring Data JPA
@@ -262,7 +262,7 @@ Prometheus and Grafana are included in the Docker setup under `infrastructure/do
 
 ### Prerequisites
 
-- JDK 24
+- JDK 25
 - Docker / Docker Compose
 - Maven 3.9+ or use the existing module wrappers
 
