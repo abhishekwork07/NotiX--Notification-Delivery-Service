@@ -6,7 +6,7 @@ import com.abhishek.notix.common.enums.Channel;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,6 +17,9 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/test/api")
 public class NotificationTestController {
+
+    @Value("${notix.security.api-key}")
+    private String validApiKey;
 
     private NotificationService notificationService;
 
@@ -53,9 +56,7 @@ public class NotificationTestController {
     @GetMapping("/rate-limiter")
     public ResponseEntity<String> testRateLimiter(
             @RequestHeader(value = "X-API-KEY", required = true) String apiKey) {
-        final String VALID_API_KEY = "notix-secure-key";
-
-        if (!VALID_API_KEY.equals(apiKey)) {
+        if (!validApiKey.equals(apiKey)) {
             return ResponseEntity.status(401).body("  ❌ Unauthorized: Invalid API Key");
         }
         if (bucket.tryConsume(1)) {

@@ -13,7 +13,7 @@ public class SecurityConfig {
     public FilterRegistrationBean<ApiKeyAuthFilter> apiKeyFilter(ApiKeyAuthFilter filter) {
         FilterRegistrationBean<ApiKeyAuthFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(filter);
-        registrationBean.addUrlPatterns("/notifications/*", "/test/**"); // secure these routes
+        registrationBean.addUrlPatterns("/notifications/*", "/test/*"); // secure these routes
         registrationBean.setOrder(1);
         return registrationBean;
     }

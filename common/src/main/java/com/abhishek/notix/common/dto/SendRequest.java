@@ -1,7 +1,6 @@
 package com.abhishek.notix.common.dto;
 
 import com.abhishek.notix.common.enums.Channel;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
@@ -10,7 +9,6 @@ import java.util.Map;
 public class SendRequest {
 
     @NotBlank
-    @Email
     private String to;
 
     @NotNull

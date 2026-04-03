@@ -22,5 +22,17 @@ public class StatusResponseDTO {
                 .collect(Collectors.toList());
     }
 
+    public UUID getId() {
+        return id;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public List<DeliveryAttempt> getAttempts() {
+        return attempts;
+    }
+
     public record DeliveryAttempt(int attemptNo, String status, Instant timestamp) {}
 }

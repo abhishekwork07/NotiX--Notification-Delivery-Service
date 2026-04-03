@@ -29,6 +29,9 @@ public class DeliveryLog {
     @Column(nullable = false)
     private Instant timestamp = Instant.now();
 
+    public DeliveryLog() {
+    }
+
     public DeliveryLog(UUID notificationId, int attemptNo, Status status, String errorMessage, Instant timestamp) {
         this.notificationId = notificationId;
         this.attemptNo = attemptNo;
@@ -85,4 +88,3 @@ public class DeliveryLog {
         this.timestamp = timestamp;
     }
 }
-

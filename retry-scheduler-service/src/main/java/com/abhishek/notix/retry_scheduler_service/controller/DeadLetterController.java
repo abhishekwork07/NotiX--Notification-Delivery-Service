@@ -1,5 +1,6 @@
 package com.abhishek.notix.retry_scheduler_service.controller;
 
+import com.abhishek.notix.common.enums.Channel;
 import com.abhishek.notix.retry_scheduler_service.model.DeadLetter;
 import com.abhishek.notix.retry_scheduler_service.repo.DeadLetterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,7 +24,7 @@ public class DeadLetterController {
     // 🔍 Filter by channel
     @GetMapping("/channel/{channel}")
     public List<DeadLetter> getByChannel(@PathVariable String channel) {
-        return deadLetterRepository.findByChannel(channel.toUpperCase());
+        return deadLetterRepository.findByChannel(Channel.valueOf(channel.toUpperCase()));
     }
 
     // 🔍 Filter by template
@@ -39,9 +40,9 @@ public class DeadLetterController {
             @RequestParam(required = false) String template
     ) {
         if (channel != null && template != null) {
-            return deadLetterRepository.findByChannelAndTemplate(channel.toUpperCase(), template);
+            return deadLetterRepository.findByChannelAndTemplate(Channel.valueOf(channel.toUpperCase()), template);
         } else if (channel != null) {
-            return deadLetterRepository.findByChannel(channel.toUpperCase());
+            return deadLetterRepository.findByChannel(Channel.valueOf(channel.toUpperCase()));
         } else if (template != null) {
             return deadLetterRepository.findByTemplate(template);
         } else {

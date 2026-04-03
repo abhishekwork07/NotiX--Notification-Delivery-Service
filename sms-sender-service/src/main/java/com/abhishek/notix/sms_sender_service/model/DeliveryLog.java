@@ -1,16 +1,13 @@
 package com.abhishek.notix.sms_sender_service.model;
 
 import com.abhishek.notix.common.enums.Status;
-import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import jakarta.persistence.*;
-import lombok.Builder;
 
 import java.time.Instant;
 import java.util.UUID;
 
 @Entity
 @Table(name = "delivery_logs")
-@Builder
 public class DeliveryLog {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,6 +28,9 @@ public class DeliveryLog {
 
     @Column(nullable = false)
     private Instant timestamp;
+
+    public DeliveryLog() {
+    }
 
     public DeliveryLog(UUID notificationId, int attemptNo, Status status, String errorMessage, Instant timestamp) {
         this.notificationId = notificationId;
@@ -97,4 +97,3 @@ public class DeliveryLog {
         this.timestamp = timestamp;
     }
 }
-

@@ -1,7 +1,6 @@
 package com.abhishek.notix.retry_scheduler_service.service;
 
 import com.abhishek.notix.common.dto.NotificationEvent;
-import com.abhishek.notix.common.enums.Channel;
 import com.abhishek.notix.common.enums.Status;
 import com.abhishek.notix.retry_scheduler_service.model.DeadLetter;
 import com.abhishek.notix.retry_scheduler_service.model.DeliveryLog;
@@ -10,10 +9,10 @@ import com.abhishek.notix.retry_scheduler_service.repo.DeadLetterRepository;
 import com.abhishek.notix.retry_scheduler_service.repo.DeliveryLogRepository;
 import com.abhishek.notix.retry_scheduler_service.repo.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
@@ -33,46 +32,51 @@ public class RetrySchedulerService {
     @Autowired
     private KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
-    @Value("${kafka.producer.email-topic}")
-    private String emailTopic;
-
-    @Value("${kafka.producer.sms-topic}")
-    private String smsTopic;
-
     private static final int MAX_ATTEMPTS = 3;
 
-    //@Timed(value = "retry.process.time", description = "Time taken to process retries")
+    @Transactional
     @Scheduled(fixedDelay = 15000)
     public void retryFailedMessages() {
-        List<DeliveryLog> failedLogs = deliveryLogRepository.findRetryableMessages(MAX_ATTEMPTS);
+        List<DeliveryLog> failedLogs = deliveryLogRepository.findLatestFailedAttempts(MAX_ATTEMPTS);
 
         for (DeliveryLog log : failedLogs) {
-            // Fetch original notification data
             Notification notification = notificationRepository
                     .findById(log.getNotificationId())
                     .orElseThrow(() -> new RuntimeException("Notification not found for retry"));
-            try {
-                // Rebuild the event with original data
-                NotificationEvent event = buildNotificationEvent(notification);
 
-                // Publish again to Kafka
-                kafkaTemplate.send("notifications", notification.getId().toString(), event);
-
-                // Update log status
-                log.setAttemptNo(log.getAttemptNo() + 1);
-                log.setStatus(Status.PENDING);
-                log.setErrorMessage(null);
-            } catch (Exception ex) {
-                log.setAttemptNo(log.getAttemptNo() + 1);
-                log.setErrorMessage(ex.getMessage());
-
-                if (log.getAttemptNo() >= MAX_ATTEMPTS) {
-                    log.setStatus(Status.FAILED); // Move to DLQ or stop retrying
-                    persistToDLQ(log, notification);
-                }
+            int nextAttempt = log.getAttemptNo() + 1;
+            if (deliveryLogRepository.existsByNotificationIdAndAttemptNo(notification.getId(), nextAttempt)) {
+                continue;
             }
 
-            deliveryLogRepository.save(log);
+            DeliveryLog retryLog = new DeliveryLog(
+                    notification.getId(),
+                    nextAttempt,
+                    Status.PENDING,
+                    null,
+                    Instant.now()
+            );
+            deliveryLogRepository.save(retryLog);
+
+            try {
+                notification.setStatus(Status.PENDING);
+                notificationRepository.save(notification);
+
+                NotificationEvent event = buildNotificationEvent(notification, nextAttempt);
+                kafkaTemplate.send("notifications", notification.getId().toString(), event);
+            } catch (Exception ex) {
+                retryLog.setStatus(Status.FAILED);
+                retryLog.setErrorMessage(ex.getMessage());
+                retryLog.setTimestamp(Instant.now());
+                deliveryLogRepository.save(retryLog);
+
+                notification.setStatus(Status.FAILED);
+                notificationRepository.save(notification);
+
+                if (nextAttempt >= MAX_ATTEMPTS) {
+                    persistToDLQ(retryLog, notification);
+                }
+            }
         }
     }
 
@@ -83,7 +87,7 @@ public class RetrySchedulerService {
             dlq.setRecipient(notification.getRecipient());
             dlq.setChannel(notification.getChannel());
             dlq.setStatus(log.getStatus());
-            dlq.setTemplate("testing");
+            dlq.setTemplate(notification.getTemplate());
             dlq.setErrorMessage(log.getErrorMessage());
             dlq.setCreatedAt(Instant.now());
 
@@ -95,17 +99,17 @@ public class RetrySchedulerService {
 
     @Scheduled(fixedDelay = 60000) // Every 60 seconds
     public void moveFailedLogsToDLQ() {
-        List<DeliveryLog> failedLogs = deliveryLogRepository.findByStatus(Status.FAILED);
-
+        List<DeliveryLog> failedLogs = deliveryLogRepository.findTerminalFailures(MAX_ATTEMPTS);
 
         for (DeliveryLog log : failedLogs) {
             try {
-                // Fetch original notification data
                 Notification notification = notificationRepository
                         .findById(log.getNotificationId())
-                        .orElseThrow(() -> new RuntimeException("Notification not found for retry"));
-                persistToDLQ(log, notification); // Use existing method
-                //deliveryLogRepository.delete(log); // Optional: delete after moving
+                        .orElseThrow(() -> new RuntimeException("Notification not found for DLQ"));
+
+                notification.setStatus(Status.FAILED);
+                notificationRepository.save(notification);
+                persistToDLQ(log, notification);
                 System.out.println("✅ Moved to DLQ: " + log.getNotificationId());
             } catch (Exception e) {
                 System.err.println("⚠️ Error moving to DLQ: " + e.getMessage());
@@ -113,15 +117,13 @@ public class RetrySchedulerService {
         }
     }
 
-
-
-    private NotificationEvent buildNotificationEvent(Notification notification) {
+    private NotificationEvent buildNotificationEvent(Notification notification, int attemptNo) {
         return NotificationEvent.builder()
                 .id(notification.getId())
                 .to(notification.getRecipient())
                 .channel(notification.getChannel())
                 .template(notification.getTemplate())
+                .attemptNo(attemptNo)
                 .build();
     }
 }
-
