@@ -47,6 +47,18 @@ springdoc:
     enabled: true
   swagger-ui:
     path: /swagger-ui.html
+    urls:
+      - name: api-service
+        url: /v3/api-docs
+      - name: dispatcher-service
+        url: http://localhost:7071/v3/api-docs
+      - name: email-sender-service
+        url: http://localhost:7072/v3/api-docs
+      - name: sms-sender-service
+        url: http://localhost:7073/v3/api-docs
+      - name: retry-scheduler-service
+        url: http://localhost:7074/v3/api-docs
+    urls-primary-name: api-service
 
 notix:
   defaults:

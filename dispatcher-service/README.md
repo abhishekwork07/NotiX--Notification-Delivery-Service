@@ -48,6 +48,7 @@ flowchart LR
 
 - Port: `7071`
 - Kafka: `localhost:9092`
+- Swagger UI: `http://localhost:7071/swagger-ui.html`
 
 ## Run
 

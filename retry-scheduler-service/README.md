@@ -53,6 +53,7 @@
 - Port: `7074`
 - Kafka: `localhost:9092`
 - PostgreSQL: `localhost:5433`
+- Swagger UI: `http://localhost:7074/swagger-ui.html`
 
 ## Run
 

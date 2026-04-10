@@ -39,3 +39,9 @@ kafka:
   producer:
     email-topic: notifications.email
     sms-topic: notifications.sms
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
