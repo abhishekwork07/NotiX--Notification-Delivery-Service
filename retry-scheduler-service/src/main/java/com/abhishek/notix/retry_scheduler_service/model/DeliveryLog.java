@@ -1,6 +1,7 @@
 package com.abhishek.notix.retry_scheduler_service.model;
 
 import com.abhishek.notix.common.enums.Status;
+import com.abhishek.notix.common.enums.Channel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -23,6 +24,15 @@ public class DeliveryLog {
 
     @Column(name = "notification_id", nullable = false)
     private UUID notificationId;
+
+    @Column(name = "tenant_id")
+    private UUID tenantId;
+
+    @Enumerated(EnumType.STRING)
+    private Channel channel;
+
+    @Column(name = "provider_account_id")
+    private UUID providerAccountId;
 
     @Column(name = "attempt_no", nullable = false)
     private int attemptNo;
@@ -62,6 +72,30 @@ public class DeliveryLog {
 
     public void setNotificationId(UUID notificationId) {
         this.notificationId = notificationId;
+    }
+
+    public UUID getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(UUID tenantId) {
+        this.tenantId = tenantId;
+    }
+
+    public Channel getChannel() {
+        return channel;
+    }
+
+    public void setChannel(Channel channel) {
+        this.channel = channel;
+    }
+
+    public UUID getProviderAccountId() {
+        return providerAccountId;
+    }
+
+    public void setProviderAccountId(UUID providerAccountId) {
+        this.providerAccountId = providerAccountId;
     }
 
     public int getAttemptNo() {

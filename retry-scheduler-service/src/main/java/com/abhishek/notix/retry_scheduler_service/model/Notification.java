@@ -21,6 +21,9 @@ public class Notification {
     @Id
     private UUID id;
 
+    @Column(name = "tenant_id")
+    private UUID tenantId;
+
     @Column(name = "recipient", nullable = false)
     private String recipient;
 
@@ -30,6 +33,23 @@ public class Notification {
 
     @Column(nullable = false)
     private String template;
+
+    @Column(name = "template_id")
+    private UUID templateId;
+
+    @Column(name = "provider_account_id")
+    private UUID providerAccountId;
+
+    @Column(name = "idempotency_key")
+    private String idempotencyKey;
+
+    private String subject;
+
+    @Column(columnDefinition = "TEXT")
+    private String body;
+
+    @Column(name = "scheduled_at")
+    private Instant scheduledAt;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -61,6 +81,14 @@ public class Notification {
         this.id = id;
     }
 
+    public UUID getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(UUID tenantId) {
+        this.tenantId = tenantId;
+    }
+
     public String getRecipient() {
         return recipient;
     }
@@ -83,6 +111,54 @@ public class Notification {
 
     public void setTemplate(String template) {
         this.template = template;
+    }
+
+    public UUID getTemplateId() {
+        return templateId;
+    }
+
+    public void setTemplateId(UUID templateId) {
+        this.templateId = templateId;
+    }
+
+    public UUID getProviderAccountId() {
+        return providerAccountId;
+    }
+
+    public void setProviderAccountId(UUID providerAccountId) {
+        this.providerAccountId = providerAccountId;
+    }
+
+    public String getIdempotencyKey() {
+        return idempotencyKey;
+    }
+
+    public void setIdempotencyKey(String idempotencyKey) {
+        this.idempotencyKey = idempotencyKey;
+    }
+
+    public String getSubject() {
+        return subject;
+    }
+
+    public void setSubject(String subject) {
+        this.subject = subject;
+    }
+
+    public String getBody() {
+        return body;
+    }
+
+    public void setBody(String body) {
+        this.body = body;
+    }
+
+    public Instant getScheduledAt() {
+        return scheduledAt;
+    }
+
+    public void setScheduledAt(Instant scheduledAt) {
+        this.scheduledAt = scheduledAt;
     }
 
     public Status getStatus() {

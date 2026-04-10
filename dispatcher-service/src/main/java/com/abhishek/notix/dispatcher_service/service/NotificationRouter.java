@@ -29,11 +29,11 @@ public class NotificationRouter {
         switch (event.getChannel()) {
             case EMAIL -> {
                 System.out.println("📬 Routing to Email Topic");
-                kafkaTemplate.send(emailTopic, event);
+                kafkaTemplate.send(emailTopic, event.getId().toString(), event);
             }
             case SMS -> {
                 System.out.println("📲 Routing to SMS Topic");
-                kafkaTemplate.send(smsTopic, event);
+                kafkaTemplate.send(smsTopic, event.getId().toString(), event);
             }
             default -> System.err.println("❌ Unknown channel: " + event.getChannel());
         }
