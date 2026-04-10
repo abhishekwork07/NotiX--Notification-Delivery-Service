@@ -1,47 +1,47 @@
 # sms-sender-service
 
-## Purpose
+`sms-sender-service` is the SMS delivery worker in NotiX.
 
-`sms-sender-service` is the SMS delivery worker in NotiX. It consumes SMS notifications from Kafka, invokes Twilio for delivery, stores attempt logs, and updates the notification status.
+## Responsibilities
 
-## Capabilities
+- consume SMS work from Kafka
+- resolve the tenant-selected SMS provider account
+- send the message through Twilio or future provider integrations
+- persist attempt history in `delivery_logs`
+- update the canonical `notifications` row
+- emit `NotificationStatusEvent` to `notifications.status`
 
-- consumes SMS notifications from Kafka
-- processes `NotificationEvent` for channel `SMS`
-- sends SMS using Twilio
-- records each attempt in `delivery_logs`
-- updates the notification status to `SENT` or `FAILED`
-- prevents duplicate final processing for the same `(notificationId, attemptNo)`
+## Topic Flow
 
-## Topics
+- consumes: `notifications.sms`
+- produces: `notifications.status`
 
-Consumes:
+## Data Access
 
-- `notifications.sms`
+- reads `notifications`
+- reads `provider_accounts`
+- writes `delivery_logs`
+- updates `notifications`
 
 ## Important Classes
 
 - `SmsNotificationListener`
 - `SmsSenderService`
-- `SmsConfig`
 - `KafkaConfig`
+- `SmsConfig`
+- `NotificationTestController`
 
-## Demo Endpoint
+## Implementation Notes
 
-- `POST /test/sms/send`
+- duplicate final handling is prevented per `(notificationId, attemptNo)`
+- the service is tenant-aware through `tenant_id` and provider account resolution
+- valid Twilio settings are required for real SMS delivery
 
-## Required External Config
-
-Set valid Twilio values in configuration before testing real SMS delivery:
+## Required External Configuration
 
 - `twilio.account-sid`
 - `twilio.auth-token`
 - `twilio.from-number`
-
-## Data It Updates
-
-- `delivery_logs`
-- `notifications`
 
 ## Local Defaults
 
@@ -56,3 +56,9 @@ Set valid Twilio values in configuration before testing real SMS delivery:
 ```
 
 Run from inside `sms-sender-service/`.
+
+## Read Next
+
+- [Root README](../README.md)
+- [Low-Level Design](../docs/LLD.md)
+- [Database Design](../docs/Database-Design.md)

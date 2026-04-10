@@ -1,543 +1,293 @@
 # NotiX Low-Level Design
 
-## 1. Scope
+## 1. Purpose
 
-This document maps the current codebase structure to the actual runtime behavior of NotiX. It focuses on:
-
-- package/module responsibilities
-- main classes and their roles
-- endpoint contracts
-- Kafka topics and listeners
-- persistence objects
-- retry and DLQ logic
-- configuration and runtime defaults
+This document maps the current codebase to the runtime design of NotiX. It focuses on the concrete services, controllers, listeners, scheduled jobs, message contracts, and persistence structures that make the system work today.
 
 ## 2. Module Breakdown
 
-## `common`
-
-Purpose:
-
-- shared DTOs
-- shared enums
-
-Key classes:
-
-- `com.abhishek.notix.common.dto.SendRequest`
-- `com.abhishek.notix.common.dto.NotificationEvent`
-- `com.abhishek.notix.common.dto.StatusResponse`
-- `com.abhishek.notix.common.enums.Channel`
-- `com.abhishek.notix.common.enums.Status`
-
-### `SendRequest`
-
-Used by public API input.
-
-Fields:
-
-- `to`
-- `channel`
-- `template`
-- `params`
-
-### `NotificationEvent`
-
-Used internally across Kafka-based services.
-
-Fields:
-
-- `id`
-- `to`
-- `channel`
-- `template`
-- `params`
-- `attemptNo`
-
-`attemptNo` is important for retry-aware delivery logging.
-
-## `api-service`
-
-### Responsibilities
-
-- accept client requests
-- store notification metadata
-- publish notification events
-- expose notification status
-- enforce API auth and rate limits
-
-### Main classes
-
-#### `NotificationController`
-
-Path prefix:
-
-- `/notifications`
-
-Endpoints:
-
-- `POST /send`
-- `GET /status/{id}`
-
-#### `NotificationService`
-
-Key methods:
-
-- `processNotification(SendRequest request)`
-- `processNotification(NotificationEvent event)`
-- `getStatus(UUID id)`
-
-Behavior:
-
-1. creates a `NotificationEvent`
-2. generates a new UUID
-3. persists `Notification` with `PENDING`
-4. publishes to Kafka topic `notifications`
-5. returns the generated notification ID
-
-#### `KafkaConfig`
-
-Configures:
-
-- `ProducerFactory<String, NotificationEvent>`
-- `KafkaTemplate<String, NotificationEvent>`
-
-Serialization:
-
-- key: `StringSerializer`
-- value: `JsonSerializer`
-
-#### `ApiKeyAuthFilter`
-
-Checks:
-
-- header: `X-API-KEY`
-
-Rejects requests with:
-
-- `401 Unauthorized`
-
-#### `RateLimitingFilter`
-
-Implements:
-
-- in-memory per-key bucket
-- limit of `10 requests / minute`
-
-Rejects excess requests with:
-
-- `429 Too Many Requests`
-
-#### `SecurityConfig`
-
-Registers filters for:
-
-- `/notifications/*`
-- `/test/*`
-
-### Persistence
-
-#### `Notification`
-
-Table:
-
-- `notifications`
-
-Fields:
-
-- `id`
-- `recipient`
-- `channel`
-- `template`
-- `status`
-- `createdAt`
-- `updatedAt`
-
-#### `DeliveryLog`
-
-Table:
-
-- `delivery_logs`
-
-Fields:
-
-- `id`
-- `notificationId`
-- `attemptNo`
-- `status`
-- `errorMessage`
-- `timestamp`
-
-#### Repositories
-
-- `NotificationRepository`
-- `DeliveryLogRepository`
-
-Special query method:
-
-- `findByNotificationIdOrderByAttemptNoAscTimestampAsc`
-
-### Response DTO
-
-`StatusResponseDTO` returns:
-
-- `id`
-- `status`
-- `attempts[]`
-
-Each attempt contains:
-
-- `attemptNo`
-- `status`
-- `timestamp`
-
-## `dispatcher-service`
-
-### Responsibilities
-
-- consume from the main topic
-- route to downstream channel topics
-
-### Main classes
-
-#### `NotificationRouter`
-
-Kafka listener:
-
-- consumes from `notifications`
-
-Routing logic:
-
-- `EMAIL -> notifications.email`
-- `SMS -> notifications.sms`
-
-#### `KafkaConfig`
-
-Configures:
-
-- Kafka consumer factory for `NotificationEvent`
-- Kafka producer factory for routed channel events
-- listener container factory
-
-## `email-sender-service`
-
-### Responsibilities
-
-- consume email events
-- execute email send flow
-- persist attempt logs
-- update notification status
-
-### Main classes
-
-#### `EmailNotificationListener`
-
-Kafka listener:
-
-- consumes from `${kafka.consumer.email-topic}`
-
-Delegates to:
-
-- `EmailSenderService.sendEmail`
-
-#### `EmailSenderService`
-
-Behavior:
-
-1. checks whether the `(notificationId, attemptNo)` log already exists in a final state
-2. creates or reuses a `PENDING` delivery log
-3. performs the email send flow
-4. updates delivery log to `SENT` or `FAILED`
-5. updates the notification status
-
-Current implementation note:
-
-- the actual mail send is mocked in code comments
-- delivery tracking is real
-
-#### `MailConfig`
-
-Provides:
-
-- `JavaMailSender`
-
-Current implementation:
-
-- `JavaMailSenderImpl` mock-style bean
-
-### Persistence
-
-Local entity classes:
-
-- `Notification`
-- `DeliveryLog`
-
-Repositories:
-
-- `NotificationRepository`
-- `DeliveryLogRepository`
-
-Important query methods:
-
-- `existsByNotificationIdAndAttemptNo`
-- `findByNotificationIdAndAttemptNo`
-
-## `sms-sender-service`
-
-### Responsibilities
-
-- consume SMS events
-- call Twilio
-- persist attempt logs
-- update notification status
-
-### Main classes
-
-#### `SmsNotificationListener`
-
-Kafka listener:
-
-- consumes from `${kafka.consumer.sms-topic}`
-
-Delegates to:
-
-- `SmsSenderService.sendSms`
-
-#### `SmsSenderService`
-
-Behavior:
-
-1. checks whether the `(notificationId, attemptNo)` log is already final
-2. creates or reuses a `PENDING` delivery log
-3. sends SMS via Twilio
-4. updates delivery log to `SENT` or `FAILED`
-5. updates the notification status
-
-#### `SmsConfig`
-
-Loads:
-
-- Twilio account SID
-- auth token
-- from number
-
-Runs:
-
-- `Twilio.init(...)` in `@PostConstruct`
-
-### Persistence
-
-Local entity classes:
-
-- `Notification`
-- `DeliveryLog`
-
-Repositories:
-
-- `NotificationRepository`
-- `DeliveryLogRepository`
-
-## `retry-scheduler-service`
-
-### Responsibilities
-
-- find retryable failed attempts
-- schedule retries
-- republish with incremented attempt number
-- identify terminal failures
-- store dead-letter entries
-
-### Main classes
-
-#### `RetrySchedulerService`
-
-#### `retryFailedMessages()`
-
-Annotation:
-
-- `@Scheduled(fixedDelay = 15000)`
-
-Logic:
-
-1. fetch latest failed attempts with `attemptNo < MAX_ATTEMPTS`
-2. fetch corresponding `Notification`
-3. compute `nextAttempt`
-4. skip if that attempt number already exists
-5. insert a `PENDING` retry log
-6. republish a new `NotificationEvent`
-7. on publish failure, mark retry log `FAILED`
-8. if max attempts reached, persist to DLQ
-
-#### `moveFailedLogsToDLQ()`
-
-Annotation:
-
-- `@Scheduled(fixedDelay = 60000)`
-
-Logic:
-
-1. fetch terminal failures
-2. load corresponding notification
-3. set notification status to `FAILED`
-4. persist dead-letter record
-
-#### `buildNotificationEvent(Notification, attemptNo)`
-
-Builds a retry event using:
-
-- same notification ID
-- same recipient
-- same channel
-- same template
-- incremented `attemptNo`
-
-#### `RetryController`
-
-Endpoints:
-
-- `POST /retry/trigger`
-- `GET /retry/dead-letters`
-
-#### `DeadLetterController`
-
-Endpoints:
-
-- `GET /dlq`
-- `GET /dlq/channel/{channel}`
-- `GET /dlq/template/{template}`
-- `GET /dlq/search`
-
-### Persistence
-
-Local entity classes:
-
-- `Notification`
-- `DeliveryLog`
-- `DeadLetter`
-
-Repositories:
-
-- `NotificationRepository`
-- `DeliveryLogRepository`
-- `DeadLetterRepository`
-
-#### Important retry queries
-
-`findLatestFailedAttempts(maxRetries)`
-
-- only latest failed attempt per notification
-- only attempts below retry limit
-
-`findTerminalFailures(maxRetries)`
-
-- only latest failed attempt per notification
-- only attempts at or beyond retry limit
-
-## 3. Configuration Model
-
-## Shared local defaults
-
-- Kafka: `localhost:9092`
-- PostgreSQL: `localhost:5433`
-- DB name: `notix`
-- DB user: `notix_user`
-- DB password: `notix_pass`
-
-## Service ports
-
-- `api-service`: `7070`
-- `dispatcher-service`: `7071`
-- `email-sender-service`: `7072`
-- `sms-sender-service`: `7073`
-- `retry-scheduler-service`: `7074`
-
-## Kafka topics
-
-- ingress: `notifications`
-- email: `notifications.email`
-- sms: `notifications.sms`
-
-## Security config
-
-Default API key:
-
-- `notix-secret-key`
-
-## 4. Build Model
-
-The repo now includes a root Maven reactor:
-
-- root `pom.xml`
-
-This allows:
-
-- full multi-module build from repo root
-- correct build ordering for `common`
-
-### Full build
-
-```bash
-mvn -f pom.xml package -DskipTests
+| Module | Main Responsibilities | Important Classes |
+| --- | --- | --- |
+| `common` | Shared DTOs and enums | `SendRequest`, `NotificationEvent`, `NotificationStatusEvent`, `Channel`, `Status` |
+| `api-service` | v1 and v2 APIs, login, auth filters, notification orchestration, schedule dispatch, status ingestion, usage metering, webhook dispatch | `NotificationController`, `LoginController`, `NotixV2Controller`, `NotificationService`, `LocalJwtAuthService`, `NotixV2Service`, `NotificationStatusListener`, `ApiKeyAuthFilter`, `V2AuthFilter` |
+| `dispatcher-service` | Kafka routing by channel | `NotificationRouter` |
+| `email-sender-service` | Email consumption, attempt logging, status publishing | `EmailNotificationListener`, `EmailSenderService` |
+| `sms-sender-service` | SMS consumption, provider use, attempt logging, status publishing | `SmsNotificationListener`, `SmsSenderService` |
+| `retry-scheduler-service` | Retry scans, DLQ persistence, terminal status publishing | `RetrySchedulerService`, `RetryController`, `DeadLetterController` |
+
+## 3. HTTP Endpoints
+
+### api-service
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /notifications/send` | v1 notification intake |
+| `GET /notifications/status/{id}` | v1 status lookup |
+| `POST /auth/login` | Local app login returning JWT |
+| `POST /v2/auth/login` | Same login flow under v2 namespace |
+| `POST /v2/tenants` | Bootstrap a tenant with an initial owner |
+| `POST /v2/tenant-memberships` | Add tenant users and roles |
+| `POST /v2/api-keys` | Create tenant API keys |
+| `POST /v2/providers` | Register tenant provider accounts |
+| `POST /v2/templates` | Register tenant templates |
+| `POST /v2/webhooks` | Register tenant webhook endpoints |
+| `POST /v2/notifications` | Create and dispatch an immediate notification |
+| `GET /v2/notifications/{id}` | Get a tenant-scoped notification |
+| `GET /v2/notifications/{id}/attempts` | Get tenant-scoped attempts |
+| `POST /v2/schedules` | Create a future scheduled notification |
+| `GET /v2/usage` | Aggregate usage events for a tenant |
+
+### dispatcher-service
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /notifications/send` | Manual routing test endpoint |
+
+### email-sender-service
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /test/email/send` | Manual email worker test endpoint |
+
+### sms-sender-service
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /test/sms/send` | Manual SMS worker test endpoint |
+
+### retry-scheduler-service
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /retry/trigger` | Force retry scan |
+| `GET /retry/dead-letters` | Read DLQ rows |
+| `GET /dlq` | List dead letters |
+| `GET /dlq/channel/{channel}` | Filter DLQ by channel |
+| `GET /dlq/template/{template}` | Filter DLQ by template |
+| `GET /dlq/search` | Search DLQ |
+| `POST /test/retry/trigger` | Manual retry test endpoint |
+
+## 4. Authentication And Authorization
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Login as LoginController
+    participant Auth as LocalJwtAuthService
+    participant UserRepo as platform_users
+    participant Membership as tenant_memberships
+    participant JWT as JwtTokenService
+
+    User->>Login: POST /auth/login
+    Login->>Auth: login(login/email, password, tenantId?)
+    Auth->>UserRepo: Resolve local user by username or email
+    Auth->>Membership: Resolve tenant membership
+    Auth->>JWT: Issue signed token
+    JWT-->>User: Bearer token response
 ```
 
-### Install `common` for external local usage
+The repo currently supports four auth modes:
 
-```bash
-./common/mvnw -f common/pom.xml install -DskipTests
+- v1 API key via `ApiKeyAuthFilter`
+- v2 bootstrap admin key on `POST /v2/tenants`
+- v2 tenant API key and external-user-header auth in `V2AuthFilter`
+- local bearer JWT via `LoginController` and `LocalJwtAuthService`
+
+`AuthenticatedActor` is the request identity object used inside v2 services. It carries `tenantId`, `platformUserId`, `apiKeyId`, `membershipRole`, and `platformAdmin`.
+
+## 5. Notification Runtime Flow
+
+### 5.1 Immediate Notification
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API as api-service
+    participant DB as notifications
+    participant Main as Kafka notifications
+    participant Dispatcher as dispatcher-service
+    participant Worker as email/sms worker
+    participant Status as Kafka notifications.status
+    participant V2 as NotixV2Service
+
+    Client->>API: POST /v2/notifications
+    API->>DB: Save notification row
+    API->>Main: Publish NotificationEvent
+    Main->>Dispatcher: Consume
+    Dispatcher->>Worker: Publish to channel topic
+    Worker->>DB: Upsert delivery_logs row
+    Worker->>DB: Update notifications status
+    Worker->>Status: Publish NotificationStatusEvent
+    Status->>V2: handleStatusEvent(...)
+    V2->>DB: Write usage_events and webhook_deliveries
 ```
 
-## 5. Runtime Infrastructure
+### 5.2 Scheduled Notification
 
-Defined in:
+```mermaid
+flowchart LR
+    create["POST /v2/schedules"] --> notif["Insert notifications row with SCHEDULED"]
+    notif --> schedule["Insert notification_schedules row"]
+    schedule --> job["dispatchDueSchedules() every 5s"]
+    job --> publish["Publish NotificationEvent to notifications"]
+    publish --> normal["Normal dispatcher -> sender flow"]
+```
 
-- `infrastructure/docker/docker-compose.yml`
+### 5.3 Retry And Dead-Letter Flow
 
-Containers:
+```mermaid
+flowchart LR
+    failed["FAILED delivery_logs row"] --> scan["RetrySchedulerService scan every 15s"]
+    scan --> retryable{"attempt_no < max?"}
+    retryable -- "yes" --> next["Create next PENDING attempt"]
+    next --> republish["Republish to notifications"]
+    retryable -- "no" --> dlq["Persist dead_letters row"]
+    dlq --> status["Publish DEAD_LETTERED status event"]
+```
 
-- Zookeeper
-- Kafka
-- PostgreSQL
-- Prometheus
-- Grafana
+## 6. Kafka Contracts
 
-## 6. Design Decisions
+| Contract | Producer(s) | Consumer(s) | Key Fields |
+| --- | --- | --- | --- |
+| `NotificationEvent` | `api-service`, `retry-scheduler-service` | `dispatcher-service`, then workers | `id`, `tenantId`, `to`, `channel`, `template`, `templateId`, `params`, `idempotencyKey`, `providerAccountId`, `subject`, `body`, `scheduledAt`, `attemptNo` |
+| `NotificationStatusEvent` | `email-sender-service`, `sms-sender-service`, `retry-scheduler-service` | `api-service` | `tenantId`, `notificationId`, `channel`, `status`, `eventType`, `attemptNo`, `errorMessage`, `occurredAt` |
 
-### Shared DTOs, local entities
+## 7. Service Internals
 
-Chosen because:
+### common
 
-- contract reuse is high-value
-- JPA schema ownership should remain service-local
-- it avoids tighter database coupling than necessary
+- `SendRequest`
+  - public v1 input DTO
+- `NotificationEvent`
+  - internal async contract used across services
+- `NotificationStatusEvent`
+  - status fan-in contract used by the API service
 
-### Kafka as the async backbone
+### api-service
 
-Chosen because:
+#### v1 path
 
-- producers and consumers remain decoupled
-- retry can reuse the same ingress path
-- new channel services can be added later
+- `NotificationController`
+  - handles send and status endpoints
+- `NotificationService`
+  - creates a notification row and publishes the first event
 
-### Delivery logs per attempt
+#### v2 path
 
-Chosen because:
+- `LoginController`
+  - local login endpoint for bearer JWT issuance
+- `LocalJwtAuthService`
+  - validates local users and resolves memberships
+- `NotixV2Controller`
+  - exposes tenant, provider, template, webhook, notification, schedule, and usage endpoints
+- `NotixV2Service`
+  - central orchestration layer for the v2 control plane and runtime support
+- `NotificationStatusListener`
+  - consumes `notifications.status`
 
-- retry history becomes visible
-- the status API can show progression over time
-- operational debugging becomes easier
+#### v2 background jobs
 
-## 7. Current Limitations
+- `dispatchDueSchedules()`
+  - every `5s`
+- `dispatchWebhookDeliveries()`
+  - every `10s`
 
-- email delivery path is mocked rather than fully integrated
-- one shared PostgreSQL instance is used in local development
-- there is no advanced backoff strategy yet
-- tests are limited
-- auth and tenancy are still POC-grade
+#### v2 startup seeding
 
-## 8. Recommended Next Engineering Steps
+- `DefaultIdentitySeeder`
+  - ensures a default tenant
+  - seeds `admin` and `operator` local users
 
-- add integration tests for end-to-end notification flow
-- externalize secrets for Twilio and API keys
-- add migration tooling instead of relying only on `ddl-auto=update`
-- improve retry policy with exponential backoff and jitter
-- document or automate topic creation
-- introduce provider abstraction for email and SMS
+### dispatcher-service
+
+- `NotificationRouter`
+  - single responsibility router from `notifications` to `notifications.email` or `notifications.sms`
+
+### email-sender-service
+
+- `EmailNotificationListener`
+  - Kafka consumer for the email topic
+- `EmailSenderService`
+  - resolves the provider account
+  - persists/upserts the attempt log
+  - updates the notification row
+  - emits `NotificationStatusEvent`
+
+### sms-sender-service
+
+- `SmsNotificationListener`
+  - Kafka consumer for the SMS topic
+- `SmsSenderService`
+  - same runtime shape as the email worker with Twilio/provider specifics
+
+### retry-scheduler-service
+
+- `RetrySchedulerService`
+  - scans retryable failures every `15s`
+  - scans DLQ handling every `60s`
+  - republishes retry work
+  - writes dead letters
+  - emits terminal `NotificationStatusEvent`
+
+## 8. Persistence Responsibilities
+
+| Table | Main Owner In Code | Purpose |
+| --- | --- | --- |
+| `notifications` | `api-service` plus sender/retry readers | Canonical notification intent and current lifecycle state |
+| `delivery_logs` | sender services and retry service | Attempt history |
+| `dead_letters` | `retry-scheduler-service` | Terminal failure store |
+| `tenants` | `api-service` | Tenant master record |
+| `platform_users` | `api-service` | Local or external user identities |
+| `tenant_memberships` | `api-service` | Tenant-role mapping |
+| `api_keys` | `api-service` | Machine access for tenant APIs |
+| `provider_accounts` | `api-service`, sender readers | Tenant-owned provider config |
+| `notification_templates` | `api-service` | Tenant templates |
+| `notification_schedules` | `api-service` | One-time future dispatch |
+| `usage_events` | `api-service` | Immutable product metering |
+| `webhook_endpoints` | `api-service` | Tenant webhook configuration |
+| `webhook_deliveries` | `api-service` | Outbound webhook retry state |
+| `audit_logs` | `api-service` | Control-plane audit trail |
+
+The full table details and relationship model are captured in [Database Design](Database-Design.md).
+
+## 9. Scheduler And Retry Cadence
+
+| Job | Service | Interval |
+| --- | --- | --- |
+| Schedule dispatch | `api-service` | `5 seconds` |
+| Webhook dispatch | `api-service` | `10 seconds` |
+| Delivery retry scan | `retry-scheduler-service` | `15 seconds` |
+| DLQ sweep | `retry-scheduler-service` | `60 seconds` |
+
+## 10. Configuration Defaults
+
+| Setting | Default |
+| --- | --- |
+| Kafka | `localhost:9092` |
+| PostgreSQL | `localhost:5433/notix` |
+| v1 API key | `notix-secret-key` |
+| v2 bootstrap key | `notix-bootstrap-admin-key` |
+| JWT expiry | `120 minutes` |
+| Default tenant domain | `default.notix.local` |
+| Default admin login | `admin / admin123` |
+| Default operator login | `operator / operator123` |
+
+## 11. Important Implementation Notes
+
+- v1 and v2 coexist in the same `api-service`
+- tenant filtering is enforced in service logic and repositories
+- the sender services and retry service use local entity copies, not shared JPA entities
+- `common` intentionally stays at DTO/enum level
+- `delivery_logs` is append/update by attempt, while `notifications` remains the canonical business record
+- `dead_letters` currently stores a terminal failure snapshot and does not keep a direct foreign key back to `notifications`
+
+## 12. What To Read First In Code
+
+If you are onboarding to the repo, start in this order:
+
+1. `common` DTOs and enums
+2. `api-service` controllers and `NotixV2Service`
+3. `dispatcher-service` router
+4. sender services
+5. `retry-scheduler-service`
+6. [Database Design](Database-Design.md)

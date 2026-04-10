@@ -1,33 +1,35 @@
 # retry-scheduler-service
 
-## Purpose
+`retry-scheduler-service` is the resilience worker for NotiX. It decides when failed deliveries should be retried and when they should be moved to the dead-letter store.
 
-`retry-scheduler-service` is responsible for resilience in NotiX. It identifies failed delivery attempts, creates the next retry attempt, republishes the notification to Kafka, and moves terminal failures into the dead-letter store.
+## Responsibilities
 
-## Capabilities
+- scan failed `delivery_logs`
+- republish retryable work to `notifications`
+- create the next `PENDING` attempt record before republishing
+- mark terminal failures and write `dead_letters`
+- emit `NotificationStatusEvent` for dead-lettered outcomes
+- expose operational endpoints for retry and DLQ inspection
 
-- scans for retryable failed delivery attempts
-- republishes notifications with incremented `attemptNo`
-- creates `PENDING` retry logs before republishes
-- marks terminal failures after max attempts
-- stores dead-letter records for operational inspection
-- exposes manual retry and DLQ inspection endpoints
+## Runtime Cadence
 
-## Retry Model
+- retry scan: every `15s`
+- DLQ sweep: every `60s`
 
-- max attempts: `3`
-- retry scan interval: `15 seconds`
-- DLQ sweep interval: `60 seconds`
+## Topic Flow
 
-## Kafka Usage
+- produces: `notifications`
+- produces: `notifications.status`
 
-Produces to:
+## Data Access
 
-- `notifications`
+- reads `notifications`
+- reads `delivery_logs`
+- writes `delivery_logs`
+- updates `notifications`
+- writes `dead_letters`
 
-That means retries re-enter the same normal routing pipeline as first-time notifications.
-
-## Main Endpoints
+## Endpoints
 
 - `POST /retry/trigger`
 - `GET /retry/dead-letters`
@@ -43,13 +45,8 @@ That means retries re-enter the same normal routing pipeline as first-time notif
 - `RetryController`
 - `DeadLetterController`
 - `DeliveryLogRepository`
+- `NotificationRepository`
 - `DeadLetterRepository`
-
-## Data It Updates
-
-- `delivery_logs`
-- `notifications`
-- `dead_letters`
 
 ## Local Defaults
 
@@ -64,3 +61,9 @@ That means retries re-enter the same normal routing pipeline as first-time notif
 ```
 
 Run from inside `retry-scheduler-service/`.
+
+## Read Next
+
+- [Root README](../README.md)
+- [Low-Level Design](../docs/LLD.md)
+- [Database Design](../docs/Database-Design.md)

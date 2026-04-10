@@ -1,45 +1,53 @@
 # dispatcher-service
 
-## Purpose
+`dispatcher-service` is the routing hub of the data plane. It keeps channel-routing logic separate from both the public API and the delivery workers.
 
-`dispatcher-service` is the internal Kafka router of NotiX. It listens to the main ingress topic and forwards notifications to the correct channel-specific topic based on the requested channel.
+## Responsibilities
 
-## Capabilities
+- consume `NotificationEvent` from `notifications`
+- inspect the `channel` field
+- forward events to `notifications.email` or `notifications.sms`
+- preserve the notification ID as the Kafka message key for downstream ordering and traceability
 
-- consumes from Kafka topic `notifications`
-- inspects the `channel` field on `NotificationEvent`
-- routes email events to `notifications.email`
-- routes SMS events to `notifications.sms`
-- keeps channel routing logic separate from API and sender services
+## Topic Flow
 
-## Main Runtime Flow
+```mermaid
+flowchart LR
+    main[("notifications")]
+    router["NotificationRouter"]
+    email[("notifications.email")]
+    sms[("notifications.sms")]
 
-Input topic:
+    main --> router
+    router --> email
+    router --> sms
+```
 
-- `notifications`
+## Inputs
 
-Output topics:
+- Kafka topic: `notifications`
+- manual test endpoint: `POST /notifications/send`
 
-- `notifications.email`
-- `notifications.sms`
+## Outputs
+
+- Kafka topic: `notifications.email`
+- Kafka topic: `notifications.sms`
 
 ## Important Classes
 
 - `NotificationRouter`
 - `KafkaConfig`
-- `NotificationController` for manual routing tests
+- `NotificationController`
 
-## Demo Endpoint
+## Notes
 
-- `POST /notifications/send`
-
-This endpoint is mainly useful for manual testing of routing logic.
+- this service does not own product state
+- it is intentionally thin so routing remains easy to extend when new channels are added
 
 ## Local Defaults
 
 - Port: `7071`
 - Kafka: `localhost:9092`
-- PostgreSQL: `localhost:5433`
 
 ## Run
 
@@ -48,3 +56,8 @@ This endpoint is mainly useful for manual testing of routing logic.
 ```
 
 Run from inside `dispatcher-service/`.
+
+## Read Next
+
+- [Root README](../README.md)
+- [Low-Level Design](../docs/LLD.md)

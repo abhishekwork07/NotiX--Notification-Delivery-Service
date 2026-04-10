@@ -1,26 +1,27 @@
 # email-sender-service
 
-## Purpose
+`email-sender-service` is the email delivery worker in NotiX.
 
-`email-sender-service` is the email delivery worker in NotiX. It consumes email notifications from Kafka, performs the email send flow, stores delivery attempt history, and updates the overall notification status.
+## Responsibilities
 
-## Capabilities
+- consume email work from Kafka
+- resolve the preferred provider configuration for the tenant
+- perform the email send flow
+- persist or update the current attempt in `delivery_logs`
+- update the canonical `notifications` row
+- emit `NotificationStatusEvent` back to `api-service`
 
-- consumes email notifications from Kafka
-- processes `NotificationEvent` for channel `EMAIL`
-- records attempt-level delivery logs
-- updates the notification status to `SENT` or `FAILED`
-- supports idempotent handling by `(notificationId, attemptNo)`
+## Topic Flow
 
-## Topics
+- consumes: `notifications.email`
+- produces: `notifications.status`
 
-Consumes:
+## Data Access
 
-- `notifications.email`
-
-## Current Implementation Note
-
-The mail send logic is currently mocked through the configured `JavaMailSender` setup. This service already exercises the delivery-state flow even though SMTP integration is not fully implemented.
+- reads `notifications`
+- reads `provider_accounts`
+- writes `delivery_logs`
+- updates `notifications`
 
 ## Important Classes
 
@@ -28,15 +29,13 @@ The mail send logic is currently mocked through the configured `JavaMailSender` 
 - `EmailSenderService`
 - `KafkaConfig`
 - `MailConfig`
+- `NotificationTestController`
 
-## Demo Endpoint
+## Implementation Notes
 
-- `POST /test/email/send`
-
-## Data It Updates
-
-- `delivery_logs`
-- `notifications`
+- the service is idempotent by notification ID and attempt number
+- it participates in the same shared `notifications` and `delivery_logs` schema used by the rest of the repo
+- provider configuration is tenant-aware even though SMTP behavior is still simple in the current implementation
 
 ## Local Defaults
 
@@ -51,3 +50,9 @@ The mail send logic is currently mocked through the configured `JavaMailSender` 
 ```
 
 Run from inside `email-sender-service/`.
+
+## Read Next
+
+- [Root README](../README.md)
+- [Low-Level Design](../docs/LLD.md)
+- [Database Design](../docs/Database-Design.md)
