@@ -43,12 +43,14 @@ flowchart LR
 
 - this service does not own product state
 - it is intentionally thin so routing remains easy to extend when new channels are added
+- it registers with Eureka at `http://localhost:7070/eureka/`
 
 ## Local Defaults
 
 - Port: `7071`
 - Kafka: `localhost:9092`
 - Swagger UI: `http://localhost:7071/swagger-ui.html`
+- Eureka client: `http://localhost:7070/eureka/`
 
 ## Run
 

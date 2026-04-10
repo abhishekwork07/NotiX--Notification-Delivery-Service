@@ -66,6 +66,8 @@
 - writes `usage_events`
 - creates and dispatches `webhook_deliveries`
 - dispatches due `notification_schedules`
+- hosts Eureka Server at `http://localhost:7070/eureka-dashboard`
+- exposes infrastructure health at `GET /monitoring/infra/health`
 
 ## Scheduled Jobs
 
@@ -108,6 +110,8 @@
 - Kafka: `localhost:9092`
 - PostgreSQL: `localhost:5433`
 - Swagger UI: `http://localhost:7070/swagger-ui.html`
+- Eureka dashboard: `http://localhost:7070/eureka-dashboard`
+- Infrastructure health: `http://localhost:7070/monitoring/infra/health`
 - v1 API key: `notix-secret-key`
 - v2 bootstrap key: `notix-bootstrap-admin-key`
 - admin login: `admin / admin123`

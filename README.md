@@ -231,6 +231,30 @@ Run each service:
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
 - Project Swagger dashboard: `http://localhost:7070/swagger-ui.html`
+- Eureka dashboard: `http://localhost:7070/eureka-dashboard`
+- Infrastructure health: `http://localhost:7070/monitoring/infra/health`
+
+## Service Discovery And Monitoring
+
+`api-service` also runs the Eureka Server for local service discovery.
+
+| Service | Eureka Role |
+| --- | --- |
+| `api-service` | Eureka Server and API edge service |
+| `dispatcher-service` | Eureka client |
+| `email-sender-service` | Eureka client |
+| `sms-sender-service` | Eureka client |
+| `retry-scheduler-service` | Eureka client |
+
+Open `http://localhost:7070/eureka-dashboard` to see registered NotiX services, their instance status, actuator health links, Swagger metadata, and OpenAPI metadata. Eureka tracks the Spring Boot services themselves; external infrastructure is exposed separately through `GET /monitoring/infra/health`.
+
+Infrastructure probes currently include:
+
+- Docker daemon/socket presence
+- Kafka cluster reachability
+- PostgreSQL connection validity
+- Prometheus readiness endpoint
+- Grafana health endpoint
 
 ## Swagger / OpenAPI
 

@@ -42,6 +42,18 @@ kafka:
   consumer:
     status-topic: notifications.status
 
+eureka:
+  dashboard:
+    path: /eureka-dashboard
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    serviceUrl:
+      defaultZone: http://localhost:7070/eureka/
+  server:
+    enable-self-preservation: false
+    eviction-interval-timer-in-ms: 10000
+
 springdoc:
   api-docs:
     enabled: true
@@ -61,6 +73,17 @@ springdoc:
     urls-primary-name: api-service
 
 notix:
+  infrastructure:
+    docker:
+      socket-path: /var/run/docker.sock
+    kafka:
+      bootstrap-servers: localhost:9092
+    postgres:
+      validation-timeout-seconds: 2
+    prometheus:
+      health-url: http://localhost:9090/-/ready
+    grafana:
+      health-url: http://localhost:3000/api/health
   defaults:
     tenant:
       name: NotiX Default Tenant
