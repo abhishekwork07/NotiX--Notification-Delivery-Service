@@ -15,6 +15,7 @@
 
 - retry scan: every `15s`
 - DLQ sweep: every `60s`
+- registers with Eureka at `http://localhost:7070/eureka/`
 
 ## Topic Flow
 
@@ -54,6 +55,7 @@
 - Kafka: `localhost:9092`
 - PostgreSQL: `localhost:5433`
 - Swagger UI: `http://localhost:7074/swagger-ui.html`
+- Eureka client: `http://localhost:7070/eureka/`
 
 ## Run
 

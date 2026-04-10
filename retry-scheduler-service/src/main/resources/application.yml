@@ -40,6 +40,23 @@ kafka:
     email-topic: notifications.email
     sms-topic: notifications.sms
 
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:7070/eureka/
+    healthcheck:
+      enabled: true
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 10
+    lease-expiration-duration-in-seconds: 30
+    status-page-url-path: /actuator/info
+    health-check-url-path: /actuator/health
+    metadata-map:
+      swagger-ui: http://localhost:${server.port}/swagger-ui.html
+      actuator-health: http://localhost:${server.port}/actuator/health
+      openapi: http://localhost:${server.port}/v3/api-docs
+
 springdoc:
   api-docs:
     enabled: true

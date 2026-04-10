@@ -36,6 +36,7 @@
 - the service is idempotent by notification ID and attempt number
 - it participates in the same shared `notifications` and `delivery_logs` schema used by the rest of the repo
 - provider configuration is tenant-aware even though SMTP behavior is still simple in the current implementation
+- it registers with Eureka at `http://localhost:7070/eureka/`
 
 ## Local Defaults
 
@@ -43,6 +44,7 @@
 - Kafka: `localhost:9092`
 - PostgreSQL: `localhost:5433`
 - Swagger UI: `http://localhost:7072/swagger-ui.html`
+- Eureka client: `http://localhost:7070/eureka/`
 
 ## Run
 

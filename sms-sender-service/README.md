@@ -36,6 +36,7 @@
 - duplicate final handling is prevented per `(notificationId, attemptNo)`
 - the service is tenant-aware through `tenant_id` and provider account resolution
 - valid Twilio settings are required for real SMS delivery
+- it registers with Eureka at `http://localhost:7070/eureka/`
 
 ## Required External Configuration
 
@@ -49,6 +50,7 @@
 - Kafka: `localhost:9092`
 - PostgreSQL: `localhost:5433`
 - Swagger UI: `http://localhost:7073/swagger-ui.html`
+- Eureka client: `http://localhost:7070/eureka/`
 
 ## Run
 
