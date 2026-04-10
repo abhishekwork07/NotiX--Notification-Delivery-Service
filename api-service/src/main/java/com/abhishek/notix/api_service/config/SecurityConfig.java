@@ -29,7 +29,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public FilterRegistrationBean<V2AuthFilter> v2AuthFilter(V2AuthFilter filter) {
+    public FilterRegistrationBean<V2AuthFilter> v2AuthFilterRegistration(V2AuthFilter filter) {
         FilterRegistrationBean<V2AuthFilter> registrationBean = new FilterRegistrationBean<>();
         registrationBean.setFilter(filter);
         registrationBean.addUrlPatterns("/v2/*");
