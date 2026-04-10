@@ -224,6 +224,43 @@ Run each service:
 ./retry-scheduler-service/mvnw -f retry-scheduler-service/pom.xml spring-boot:run
 ```
 
+## One-Click Local Startup
+
+On macOS, double-click this file from Finder:
+
+```text
+start-notix.command
+```
+
+That command packages the full reactor, starts all five Spring Boot services as background Java processes, and tails logs from:
+
+```text
+.notix-run/logs
+```
+
+To stop the services started by the launcher, double-click:
+
+```text
+stop-notix.command
+```
+
+The same flow is available from the terminal:
+
+```bash
+./scripts/start-all-services.sh --tail
+./scripts/stop-all-services.sh
+```
+
+Useful launcher options:
+
+```bash
+./scripts/start-all-services.sh --with-infra
+./scripts/start-all-services.sh --no-build
+NOTIX_MAVEN_ARGS="-Djava.version=24" ./scripts/start-all-services.sh --tail
+```
+
+Use `--with-infra` when you want the launcher to start `infrastructure/docker/docker-compose.yml` before the services. Use `--no-build` only when the service jars are already freshly packaged.
+
 ## Local Infrastructure Defaults
 
 - Kafka: `localhost:9092`
