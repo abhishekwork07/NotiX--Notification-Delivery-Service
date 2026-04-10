@@ -13,4 +13,6 @@ public interface DeliveryLogRepository extends JpaRepository<DeliveryLog, Long> 
     boolean existsByNotificationIdAndAttemptNo(UUID notificationId, int attemptNo);
 
     List<DeliveryLog> findByNotificationIdOrderByAttemptNoAscTimestampAsc(UUID id);
+
+    List<DeliveryLog> findByNotificationIdAndTenantIdOrderByAttemptNoAscTimestampAsc(UUID id, UUID tenantId);
 }

@@ -39,6 +39,8 @@ management:
 kafka:
   producer:
     topic: notifications
+  consumer:
+    status-topic: notifications.status
 
 springdoc:
   api-docs:
@@ -47,5 +49,22 @@ springdoc:
     path: /swagger-ui.html
 
 notix:
+  defaults:
+    tenant:
+      name: NotiX Default Tenant
+      domain: default.notix.local
+    users:
+      admin:
+        username: admin
+        email: admin@notix.local
+        password: admin123
+      operator:
+        username: operator
+        email: operator@notix.local
+        password: operator123
   security:
     api-key: notix-secret-key
+    bootstrap-admin-key: notix-bootstrap-admin-key
+    jwt:
+      secret: change-me-local-jwt-secret
+      expiry-minutes: 120
