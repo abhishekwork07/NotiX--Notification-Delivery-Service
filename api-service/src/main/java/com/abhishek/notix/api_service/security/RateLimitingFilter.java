@@ -36,10 +36,15 @@ public class RateLimitingFilter implements Filter {
 
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         String apiKey = httpRequest.getHeader("X-API-KEY");
+        if (apiKey == null || apiKey.isEmpty()) {
+            apiKey = httpRequest.getHeader("X-NOTIX-API-KEY");
+        }
+        if (apiKey == null || apiKey.isEmpty()) {
+            apiKey = httpRequest.getHeader("Authorization");
+        }
 
         if (apiKey == null || apiKey.isEmpty()) {
-            ((HttpServletResponse) response).sendError(401, "Missing API key");
-            return;
+            apiKey = httpRequest.getRemoteAddr();
         }
 
         Bucket bucket = resolveBucket(apiKey);
@@ -49,7 +54,7 @@ public class RateLimitingFilter implements Filter {
         } else {
             HttpServletResponse httpResponse = (HttpServletResponse) response;
             httpResponse.setStatus(429); // Too Many Requests
-            httpResponse.getWriter().write("❌ Rate limit exceeded. Try again later.");
+            httpResponse.getWriter().write("Rate limit exceeded. Try again later.");
         }
     }
 }
