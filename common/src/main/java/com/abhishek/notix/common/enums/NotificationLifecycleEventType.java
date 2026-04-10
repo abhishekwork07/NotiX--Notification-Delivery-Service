@@ -1,8 +1,7 @@
 package com.abhishek.notix.common.enums;
 
-public enum Status {
-    SCHEDULED,
-    PENDING,
+public enum NotificationLifecycleEventType {
+    ACCEPTED,
     SENT,
     FAILED,
     DEAD_LETTERED
