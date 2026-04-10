@@ -1,6 +1,8 @@
 package com.abhishek.notix.retry_scheduler_service.service;
 
 import com.abhishek.notix.common.dto.NotificationEvent;
+import com.abhishek.notix.common.dto.NotificationStatusEvent;
+import com.abhishek.notix.common.enums.NotificationLifecycleEventType;
 import com.abhishek.notix.common.enums.Status;
 import com.abhishek.notix.retry_scheduler_service.model.DeadLetter;
 import com.abhishek.notix.retry_scheduler_service.model.DeliveryLog;
@@ -32,6 +34,9 @@ public class RetrySchedulerService {
     @Autowired
     private KafkaTemplate<String, NotificationEvent> kafkaTemplate;
 
+    @Autowired
+    private KafkaTemplate<String, NotificationStatusEvent> notificationStatusKafkaTemplate;
+
     private static final int MAX_ATTEMPTS = 3;
 
     @Transactional
@@ -56,6 +61,9 @@ public class RetrySchedulerService {
                     null,
                     Instant.now()
             );
+            retryLog.setTenantId(notification.getTenantId());
+            retryLog.setChannel(notification.getChannel());
+            retryLog.setProviderAccountId(notification.getProviderAccountId());
             deliveryLogRepository.save(retryLog);
 
             try {
@@ -82,16 +90,22 @@ public class RetrySchedulerService {
 
     private void persistToDLQ(DeliveryLog log, Notification notification) {
         try {
+            notification.setStatus(Status.DEAD_LETTERED);
+            notificationRepository.save(notification);
+
             DeadLetter dlq = new DeadLetter();
             dlq.setId(log.getNotificationId());
+            dlq.setTenantId(notification.getTenantId());
             dlq.setRecipient(notification.getRecipient());
             dlq.setChannel(notification.getChannel());
-            dlq.setStatus(log.getStatus());
+            dlq.setStatus(Status.DEAD_LETTERED);
             dlq.setTemplate(notification.getTemplate());
             dlq.setErrorMessage(log.getErrorMessage());
             dlq.setCreatedAt(Instant.now());
 
             deadLetterRepository.save(dlq);
+            publishStatusEvent(notification, log.getAttemptNo(), Status.DEAD_LETTERED,
+                    NotificationLifecycleEventType.DEAD_LETTERED, log.getErrorMessage());
         } catch (Exception e) {
             System.err.println("⚠️ Failed to save to DLQ: " + e.getMessage());
         }
@@ -107,7 +121,7 @@ public class RetrySchedulerService {
                         .findById(log.getNotificationId())
                         .orElseThrow(() -> new RuntimeException("Notification not found for DLQ"));
 
-                notification.setStatus(Status.FAILED);
+                notification.setStatus(Status.DEAD_LETTERED);
                 notificationRepository.save(notification);
                 persistToDLQ(log, notification);
                 System.out.println("✅ Moved to DLQ: " + log.getNotificationId());
@@ -120,10 +134,32 @@ public class RetrySchedulerService {
     private NotificationEvent buildNotificationEvent(Notification notification, int attemptNo) {
         return NotificationEvent.builder()
                 .id(notification.getId())
+                .tenantId(notification.getTenantId())
                 .to(notification.getRecipient())
                 .channel(notification.getChannel())
                 .template(notification.getTemplate())
+                .templateId(notification.getTemplateId())
+                .idempotencyKey(notification.getIdempotencyKey())
+                .providerAccountId(notification.getProviderAccountId())
+                .subject(notification.getSubject())
+                .body(notification.getBody())
+                .scheduledAt(notification.getScheduledAt())
                 .attemptNo(attemptNo)
                 .build();
+    }
+
+    private void publishStatusEvent(Notification notification, int attemptNo, Status status,
+                                    NotificationLifecycleEventType eventType, String errorMessage) {
+        NotificationStatusEvent statusEvent = new NotificationStatusEvent(
+                notification.getTenantId(),
+                notification.getId(),
+                notification.getChannel(),
+                status,
+                eventType,
+                attemptNo,
+                errorMessage,
+                Instant.now()
+        );
+        notificationStatusKafkaTemplate.send("notifications.status", notification.getId().toString(), statusEvent);
     }
 }

@@ -26,5 +26,12 @@ public class SmsConfig {
     public PhoneNumber getFromNumber() {
         return new PhoneNumber(fromNumber);
     }
-}
 
+    public String getAccountSid() {
+        return accountSid;
+    }
+
+    public String getAuthToken() {
+        return authToken;
+    }
+}

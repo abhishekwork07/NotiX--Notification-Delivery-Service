@@ -19,6 +19,9 @@ public class DeadLetter {
     @Id
     private UUID id;
 
+    @Column(name = "tenant_id")
+    private UUID tenantId;
+
     @Column(name = "recipient", nullable = false)
     private String recipient;
 
@@ -55,6 +58,14 @@ public class DeadLetter {
 
     public void setId(UUID id) {
         this.id = id;
+    }
+
+    public UUID getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(UUID tenantId) {
+        this.tenantId = tenantId;
     }
 
     public String getRecipient() {
