@@ -1,332 +1,228 @@
 # NotiX High-Level Design
 
-## 1. Purpose
+## 1. Overview
 
-NotiX is a microservice-based notification delivery platform POC. Its primary purpose is to demonstrate the architecture of an event-driven system that can:
+NotiX is a notification platform that separates notification intake from delivery execution. It began as a microservice POC for asynchronous email and SMS delivery and now includes a SaaS-oriented foundation with tenant-aware APIs, local JWT login, API keys, provider configuration, templates, scheduling, usage tracking, and webhook delivery.
 
-- accept notification requests from external clients
-- route work asynchronously
-- support multiple delivery channels
-- track delivery state
-- retry failed notifications
-- preserve terminal failures for inspection
-- expose metrics and operational visibility
+The system is designed to answer two needs at the same time:
 
-At this stage, NotiX is not positioning itself as a fully production-hardened SaaS product. It is a backend architecture exercise and a working platform foundation.
+- preserve the original delivery-engine flow that proves the asynchronous architecture
+- introduce the control-plane building blocks required for a future multi-tenant product
 
-## 2. Goals
+## 2. Design Goals
 
-- decouple request intake from channel delivery
-- support multiple delivery channels with room for future expansion
-- maintain delivery attempt history
-- reduce synchronous coupling through Kafka
-- expose a clear operational model for failures and retries
-- demonstrate security, documentation, and observability concerns
+- accept notifications without blocking on downstream delivery
+- route work by channel through Kafka
+- keep notification intent separate from attempt-level execution history
+- support retries and terminal DLQ handling
+- introduce tenant-scoped APIs and identity without rewriting the whole platform
+- allow API-first product evolution before investing in a full SaaS UI
+- keep shared contracts centralized while keeping service persistence local
 
-## 3. Non-Goals for This POC
+## 3. Scope Of The Current Architecture
 
-- tenant isolation
-- billing and quota enforcement
-- workflow orchestration beyond basic channel routing
-- provider failover and smart routing
-- full-blown production CI/CD and infra automation
-- multi-region resilience
+### In Scope
+
+- v1 notification send and status APIs
+- v2 tenant bootstrap and tenant-scoped control-plane APIs
+- local JWT login plus API key and external-header auth modes
+- email and SMS delivery channels
+- scheduled one-time sends
+- usage metering and outbound status webhooks
+- retry and dead-letter handling
+- Prometheus and Grafana observability
+
+### Deferred Or Partial
+
+- PostgreSQL row-level security enforcement
+- full external IdP token validation pipeline
+- billing engine and hard quota enforcement
+- provider failover and dynamic routing policy
+- recurring campaigns and workflow orchestration
 
 ## 4. System Context
 
-External systems or clients call NotiX through the `api-service`. After that point, the platform uses Kafka topics and dedicated microservices to move the notification through routing, delivery, retry, and DLQ handling.
-
 ```mermaid
 flowchart LR
-    client["External Client"]
+    tenant["Tenant Admin / Client App"]
     api["api-service"]
     kafka[("Kafka")]
-    dispatcher["dispatcher-service"]
-    email["email-sender-service"]
-    sms["sms-sender-service"]
-    retry["retry-scheduler-service"]
+    delivery["Delivery Workers"]
     db[("PostgreSQL")]
+    provider["SMTP / Twilio / Future Providers"]
+    webhook["Tenant Webhook Endpoint"]
     obs["Prometheus + Grafana"]
 
-    client --> api
+    tenant --> api
     api --> kafka
-    kafka --> dispatcher
-    dispatcher --> email
-    dispatcher --> sms
-    email --> db
-    sms --> db
-    db --> retry
-    retry --> kafka
+    api --> db
+    kafka --> delivery
+    delivery --> provider
+    delivery --> db
+    delivery --> kafka
+    kafka --> api
+    api --> webhook
     api --> obs
-    dispatcher --> obs
-    email --> obs
-    sms --> obs
-    retry --> obs
+    delivery --> obs
 ```
 
-## 5. Architectural Style
+## 5. Logical Architecture
 
-NotiX follows an event-driven microservice architecture.
+The current repo is easiest to understand as two planes sharing one platform core.
 
-### Why this matters here
+```mermaid
+flowchart TB
+    subgraph ControlPlane["Control Plane"]
+        auth["Login + JWT / API Key / Membership Auth"]
+        tenants["Tenants + Platform Users + Memberships"]
+        config["Providers + Templates + Webhook Endpoints"]
+        governance["Usage Events + Audit Logs"]
+    end
 
-- `api-service` does not need to wait for delivery completion.
-- channel workers stay independent from request intake logic.
-- retry logic is separated from delivery logic.
-- future channels can be added with limited impact on the upstream flow.
+    subgraph DataPlane["Data Plane"]
+        intake["Notification Intake"]
+        schedule["Schedule Dispatcher"]
+        route["Kafka Routing"]
+        send["Email / SMS Workers"]
+        retry["Retry + Dead Letters"]
+        status["Status Events + Webhook Deliveries"]
+    end
 
-## 6. Major Components
+    auth --> intake
+    tenants --> intake
+    config --> intake
+    intake --> route
+    schedule --> route
+    route --> send
+    send --> retry
+    send --> status
+    retry --> route
+    status --> governance
+```
 
-### 6.1 `api-service`
+## 6. Main Components
 
-Responsibilities:
+| Component | Role |
+| --- | --- |
+| `api-service` | Public edge service, v1 API, v2 control plane, auth, schedule dispatch, status-event ingestion, webhook dispatch |
+| `dispatcher-service` | Channel router from the main notifications topic to email and SMS topics |
+| `email-sender-service` | Email worker that records attempts and emits status events |
+| `sms-sender-service` | SMS worker that records attempts and emits status events |
+| `retry-scheduler-service` | Recovery service that retries failed attempts and persists dead letters |
+| `common` | Shared DTOs and enums that define inter-service contracts |
 
-- validate client requests
-- enforce API key auth and rate limiting
-- persist the notification record
-- publish the initial `NotificationEvent`
-- expose delivery status to clients
-
-Primary entrypoints:
-
-- `POST /notifications/send`
-- `GET /notifications/status/{id}`
-
-### 6.2 `dispatcher-service`
-
-Responsibilities:
-
-- consume from the main ingress topic
-- inspect `channel`
-- route to the correct channel topic
-
-The dispatcher isolates routing rules from both the API and the channel workers.
-
-### 6.3 `email-sender-service`
-
-Responsibilities:
-
-- consume from `notifications.email`
-- perform email delivery logic
-- store delivery attempts
-- update notification status
-
-In the current POC, the email send path is effectively mocked, but the delivery-state flow is implemented.
-
-### 6.4 `sms-sender-service`
-
-Responsibilities:
-
-- consume from `notifications.sms`
-- invoke Twilio
-- store delivery attempts
-- update notification status
-
-### 6.5 `retry-scheduler-service`
-
-Responsibilities:
-
-- find the latest retryable failed attempts
-- create the next pending attempt
-- republish the notification with incremented `attemptNo`
-- mark terminal failures
-- store dead-letter entries
-
-## 7. Core Data Flow
+## 7. End-To-End Delivery Model
 
 ```mermaid
 sequenceDiagram
     participant Client
     participant API as api-service
-    participant Kafka as Kafka notifications
+    participant DB as PostgreSQL
+    participant Main as Kafka notifications
     participant Dispatcher as dispatcher-service
     participant Email as email-sender-service
     participant SMS as sms-sender-service
+    participant Status as Kafka notifications.status
     participant Retry as retry-scheduler-service
-    participant DB as PostgreSQL
 
-    Client->>API: POST /notifications/send
-    API->>DB: Insert notification (PENDING)
-    API->>Kafka: Publish NotificationEvent attemptNo=1
-    Kafka->>Dispatcher: Consume notifications
-    Dispatcher->>Email: Publish to notifications.email
-    Dispatcher->>SMS: Publish to notifications.sms
-
-    alt Email channel
-        Email->>DB: Insert/update delivery log
-        Email->>DB: Update notification status
-    else SMS channel
-        SMS->>DB: Insert/update delivery log
-        SMS->>DB: Update notification status
+    Client->>API: POST /v2/notifications
+    API->>DB: Insert notification
+    alt Immediate send
+        API->>Main: Publish NotificationEvent
+    else Scheduled send
+        API->>DB: Insert notification_schedules row
     end
 
-    Retry->>DB: Query latest failed attempts
-    Retry->>Kafka: Republish with next attemptNo
-    Retry->>DB: Persist dead letter after max attempts
+    Main->>Dispatcher: Consume
+    alt EMAIL
+        Dispatcher->>Email: Publish to notifications.email
+        Email->>DB: Upsert delivery log
+        Email->>DB: Update notification status
+        Email->>Status: Publish NotificationStatusEvent
+    else SMS
+        Dispatcher->>SMS: Publish to notifications.sms
+        SMS->>DB: Upsert delivery log
+        SMS->>DB: Update notification status
+        SMS->>Status: Publish NotificationStatusEvent
+    end
+
+    Retry->>DB: Scan failed attempts
+    Retry->>Main: Republish retryable work
+    Retry->>Status: Publish DEAD_LETTERED when terminal
+    Status->>API: Consume status events
+    API->>DB: Record usage events and webhook deliveries
 ```
 
-## 8. Data Ownership Model
+## 8. Architectural Decisions
 
-Current POC shape:
+### 8.1 Shared Contracts, Local Entities
 
-- each service owns its own entity classes
-- `common` owns shared DTOs and enums
-- local development uses one PostgreSQL database instance
+`common` contains DTOs and enums only. JPA entities remain service-local even when they point to the same physical table names. This keeps schema access practical for the current repo without turning `common` into a persistence-coupled library.
 
-This is a deliberate compromise for the current POC:
+### 8.2 One Shared PostgreSQL Instance For Now
 
-- shared contracts are centralized
-- service persistence code stays local
-- the repo avoids tighter schema coupling from shared JPA entities
+The current implementation uses one logical PostgreSQL database for local development. This makes iteration easier while the platform is still stabilizing, but the schema is already partitioned conceptually by tenant and by business domain.
 
-## 9. Shared Contracts
+### 8.3 Canonical Notification Plus Attempt Logs
 
-`common` contains:
+`notifications` is the business record. `delivery_logs` is the execution history. This separation is central to the v2 design because retries, metrics, status APIs, and future billing all depend on treating the notification itself as first-class.
 
-- `SendRequest`
-- `NotificationEvent`
-- `StatusResponse`
-- `Channel`
-- `Status`
+### 8.4 Topic Sharing Over Per-Tenant Topic Explosion
 
-### Why `common` exists
+Tenant context is carried in the payload and persisted on the data model. The platform does not create Kafka topics per tenant. This keeps broker topology manageable and pushes tenant isolation into application logic and, later, database policy.
 
-It allows multiple services and even external local projects to depend on a single definition of:
+## 9. Security Model
 
-- transport payloads
-- channel enum values
-- status enum values
+NotiX currently supports multiple auth styles because the platform is bridging POC and SaaS phases.
 
-## 10. Messaging Model
+- v1 API key for the original POC endpoints
+- bootstrap admin key for initial tenant creation
+- tenant API keys for machine-to-machine v2 calls
+- local JWT login for application users
+- external-user-header mode for future external IdP integration
 
-Topics:
+Authorization is tenant-aware through `tenant_memberships`, with `TENANT_ADMIN` and `TENANT_MEMBER` roles plus a platform-admin flag on `platform_users`.
 
-- `notifications`
-- `notifications.email`
-- `notifications.sms`
+## 10. Tenancy Model
 
-Design intent:
+The tenancy model is based on:
 
-- ingress topic for initial requests and retries
-- dedicated downstream topics per channel
-- simple fan-out and channel specialization
+- `tenants`
+- `platform_users`
+- `tenant_memberships`
+- `api_keys`
 
-## 11. Persistence Model
+Every SaaS-oriented business record includes `tenant_id`. This is the basis for future row-level security, tenant filtering, usage reporting, and webhook scoping.
 
-### `notifications`
+## 11. Reliability Model
 
-Tracks the canonical notification lifecycle.
+Reliability today is achieved through:
 
-Important fields:
-
-- `id`
-- `recipient`
-- `channel`
-- `template`
-- `status`
-
-### `delivery_logs`
-
-Tracks each delivery attempt separately.
-
-Important fields:
-
-- `notification_id`
-- `attempt_no`
-- `status`
-- `error_message`
-- `timestamp`
-
-### `dead_letters`
-
-Stores terminal failures for later inspection and operations.
-
-Important fields:
-
-- `id`
-- `recipient`
-- `channel`
-- `template`
-- `status`
-- `error_message`
-- `created_at`
-
-## 12. Reliability Model
-
-Reliability is handled through:
-
-- durable notification persistence before publish
-- Kafka decoupling between producer and workers
-- delivery attempt tracking
+- Kafka-based async handoff
+- persistent notification records before publish
+- attempt-level delivery logs
 - retry scheduling
-- dead-letter persistence for terminal failure visibility
+- dead-letter persistence
+- idempotency key support on v2 notification creation
+- webhook redelivery with capped retry attempts
 
-Current retry policy:
+## 12. Observability Model
 
-- max attempts: `3`
-- scheduled retry scan: every `15` seconds
-- scheduled DLQ sweep: every `60` seconds
+The platform exposes actuator metrics and Prometheus endpoints. Grafana dashboards can be used to monitor JVM and delivery behavior, while the application data model provides operational visibility through:
 
-## 13. Security Model
+- `delivery_logs`
+- `dead_letters`
+- `usage_events`
+- `audit_logs`
+- `webhook_deliveries`
 
-Implemented today in `api-service`:
+## 13. Current Tradeoffs
 
-- API key auth using `X-API-KEY`
-- in-memory Bucket4j rate limiting
+- authentication is flexible, but external IdP token validation is not fully implemented yet
+- tenant scoping exists in code and schema, but PostgreSQL RLS policies are still a future step
+- email and SMS are the only active delivery channels
+- the platform still carries v1 and v2 together, which adds complexity but preserves backward compatibility
 
-This is appropriate for a POC but should evolve for production.
+## 14. Why This Design Works For NotiX
 
-## 14. Observability Model
-
-Each service exposes:
-
-- health endpoints
-- info endpoints
-- metrics
-- Prometheus scraping support
-
-Operational stack:
-
-- Prometheus
-- Grafana
-- Spring Boot Actuator
-
-The repo already includes a Grafana dashboard JSON for quick local setup.
-
-## 15. Deployment Shape
-
-Current local deployment uses:
-
-- one Kafka broker
-- one Zookeeper instance
-- one PostgreSQL instance
-- one Prometheus container
-- one Grafana container
-- five Spring Boot services started independently
-
-This is sufficient for local demos and development.
-
-## 16. Why This Architecture Is Valuable
-
-This project demonstrates more than CRUD microservices. It shows how a real asynchronous platform can be composed from small services with clear operational responsibilities:
-
-- request intake
-- routing
-- delivery
-- retry
-- failure retention
-- visibility
-
-That is the core architectural achievement of NotiX today.
-
-## 17. Future Evolution Path
-
-The earlier future-state architecture ideas in this repo point toward:
-
-- tenant-aware routing
-- auth service
-- billing and usage metering
-- dashboard service
-- stronger ingress and gateway patterns
-
-Those ideas remain valuable, but the current codebase intentionally focuses on the simpler POC foundation first.
+This architecture lets NotiX evolve without throwing away the core POC investment. The delivery engine remains simple and event-driven, while the API layer grows into a tenant-aware control plane. That is the right shape for a project moving from backend learning exercise toward a product-grade notification service.

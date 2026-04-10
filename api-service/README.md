@@ -1,62 +1,116 @@
 # api-service
 
-## Purpose
+`api-service` is the public edge of NotiX. It carries both the original v1 notification API and the newer v2 SaaS-oriented control plane.
 
-`api-service` is the public entrypoint into NotiX. It accepts notification requests from clients, persists the initial notification record, publishes the internal event to Kafka, and exposes status lookup APIs.
+## Responsibilities
 
-## Capabilities
+- accept v1 and v2 notification requests
+- persist canonical `notifications` rows
+- publish `NotificationEvent` to Kafka
+- expose notification status and attempt history
+- manage tenants, memberships, API keys, providers, templates, schedules, usage, and webhooks
+- authenticate requests using API keys, headers, or bearer JWTs
+- consume `NotificationStatusEvent` and translate it into usage and webhook work
 
-- accepts new notification requests over HTTP
-- validates request payloads using `SendRequest`
-- protects endpoints with API key auth
-- applies in-memory rate limiting
-- stores notification metadata in PostgreSQL
-- publishes `NotificationEvent` to Kafka topic `notifications`
-- returns delivery status and attempt history
+## Main APIs
 
-## Main Endpoints
+### v1
 
 - `POST /notifications/send`
 - `GET /notifications/status/{id}`
 
-Test/demo endpoints:
+### Login
 
-- `POST /test/api/send`
-- `GET /test/api/rate-limiter`
+- `POST /auth/login`
+- `POST /v2/auth/login`
 
-## Inputs and Outputs
+### v2
 
-### Input
+- `POST /v2/tenants`
+- `POST /v2/tenant-memberships`
+- `POST /v2/api-keys`
+- `POST /v2/providers`
+- `POST /v2/templates`
+- `POST /v2/webhooks`
+- `POST /v2/notifications`
+- `GET /v2/notifications/{id}`
+- `GET /v2/notifications/{id}/attempts`
+- `POST /v2/schedules`
+- `GET /v2/usage`
 
-- HTTP request from external clients
+## Authentication Modes
 
-### Output
+- `X-API-KEY` for v1 APIs
+- `X-NOTIX-BOOTSTRAP-KEY` for tenant bootstrap
+- `X-NOTIX-API-KEY` for tenant machine access
+- `Authorization: Bearer <jwt>` for local application login
+- `X-NOTIX-EXTERNAL-USER-ID` plus `X-NOTIX-TENANT-ID` for external-user-header mode
 
-- Kafka event to topic `notifications`
-- JSON status response to clients
+## Runtime Responsibilities
 
-## Data It Owns
+### Intake And Orchestration
 
-Tables used by this service:
+- creates `notifications` rows
+- handles idempotency for v2 notification creation
+- publishes to the `notifications` Kafka topic
 
-- `notifications`
-- `delivery_logs` for status lookup
+### Control Plane
+
+- owns `tenants`, `platform_users`, `tenant_memberships`
+- creates `api_keys`, `provider_accounts`, `notification_templates`, `webhook_endpoints`
+- records `audit_logs`
+
+### Runtime Support
+
+- consumes `notifications.status`
+- writes `usage_events`
+- creates and dispatches `webhook_deliveries`
+- dispatches due `notification_schedules`
+
+## Scheduled Jobs
+
+- `dispatchDueSchedules()` every `5s`
+- `dispatchWebhookDeliveries()` every `10s`
 
 ## Important Classes
 
 - `NotificationController`
 - `NotificationService`
-- `KafkaConfig`
-- `SecurityConfig`
+- `LoginController`
+- `LocalJwtAuthService`
+- `NotixV2Controller`
+- `NotixV2Service`
+- `NotificationStatusListener`
 - `ApiKeyAuthFilter`
 - `RateLimitingFilter`
+- `V2AuthFilter`
+- `DefaultIdentitySeeder`
+
+## Tables Touched
+
+- `notifications`
+- `delivery_logs`
+- `tenants`
+- `platform_users`
+- `tenant_memberships`
+- `api_keys`
+- `provider_accounts`
+- `notification_templates`
+- `notification_schedules`
+- `usage_events`
+- `webhook_endpoints`
+- `webhook_deliveries`
+- `audit_logs`
 
 ## Local Defaults
 
 - Port: `7070`
 - Kafka: `localhost:9092`
 - PostgreSQL: `localhost:5433`
-- API key: `notix-secret-key`
+- v1 API key: `notix-secret-key`
+- v2 bootstrap key: `notix-bootstrap-admin-key`
+- admin login: `admin / admin123`
+- operator login: `operator / operator123`
 
 ## Run
 
@@ -65,3 +119,10 @@ Tables used by this service:
 ```
 
 Run from inside `api-service/`.
+
+## Read Next
+
+- [Root README](../README.md)
+- [High-Level Design](../docs/HLD.md)
+- [Low-Level Design](../docs/LLD.md)
+- [Database Design](../docs/Database-Design.md)
