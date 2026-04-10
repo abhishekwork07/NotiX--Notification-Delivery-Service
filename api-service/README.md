@@ -107,6 +107,7 @@
 - Port: `7070`
 - Kafka: `localhost:9092`
 - PostgreSQL: `localhost:5433`
+- Swagger UI: `http://localhost:7070/swagger-ui.html`
 - v1 API key: `notix-secret-key`
 - v2 bootstrap key: `notix-bootstrap-admin-key`
 - admin login: `admin / admin123`

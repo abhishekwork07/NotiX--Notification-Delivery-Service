@@ -230,7 +230,21 @@ Run each service:
 - PostgreSQL: `localhost:5433`
 - Prometheus: `http://localhost:9090`
 - Grafana: `http://localhost:3000`
-- Swagger UI: `http://localhost:7070/swagger-ui.html`
+- Project Swagger dashboard: `http://localhost:7070/swagger-ui.html`
+
+## Swagger / OpenAPI
+
+Each runnable service exposes its own OpenAPI spec and Swagger UI:
+
+| Service | Swagger UI | OpenAPI JSON |
+| --- | --- | --- |
+| `api-service` | `http://localhost:7070/swagger-ui.html` | `http://localhost:7070/v3/api-docs` |
+| `dispatcher-service` | `http://localhost:7071/swagger-ui.html` | `http://localhost:7071/v3/api-docs` |
+| `email-sender-service` | `http://localhost:7072/swagger-ui.html` | `http://localhost:7072/v3/api-docs` |
+| `sms-sender-service` | `http://localhost:7073/swagger-ui.html` | `http://localhost:7073/v3/api-docs` |
+| `retry-scheduler-service` | `http://localhost:7074/swagger-ui.html` | `http://localhost:7074/v3/api-docs` |
+
+The `api-service` Swagger UI also acts as a project-level dashboard. Use the dropdown in `http://localhost:7070/swagger-ui.html` to switch between all service specs when the services are running locally.
 
 ## Current State
 

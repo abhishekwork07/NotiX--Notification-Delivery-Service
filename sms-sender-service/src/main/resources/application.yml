@@ -36,8 +36,13 @@ kafka:
   consumer:
     sms-topic: notifications.sms
 
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+
 twilio:
   account-sid: YOUR_ACCOUNT_SID
   auth-token: YOUR_AUTH_TOKEN
   from-number: YOUR_TWILIO_PHONE
-

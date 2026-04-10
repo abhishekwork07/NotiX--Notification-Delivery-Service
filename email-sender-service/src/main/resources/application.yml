@@ -37,3 +37,9 @@ kafka:
   consumer:
     group-id: email-group
     email-topic: notifications.email
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
